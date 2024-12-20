@@ -17,15 +17,22 @@ export const TrendingPage: React.FC = () => {
         const mockData: TrendingNews[] = [
           {
             id: '1',
-            title: 'മുല്ലപ്പെരിയാർ ഡാം പൊട്ടി ',
+            title: 'മുല്ലപ്പെരിയാർ ഡാം പൊട്ടി',
             searchCount: 1500,
             reliability: 'suspicious',
             date: new Date().toISOString()
           },
           {
             id: '2',
-            title: '2024 ഓസ്കർ ആവാർഡുകൾ പ്രഖ്യാപിച്ചു. മികച്ച ഓൾറൌണ്ടർ സന്തോഷ് പണ്ഡിറ്റ് ',
+            title: '2024 ഓസ്കർ ആവാർഡുകൾ പ്രഖ്യാപിച്ചു. മികച്ച ഓൾറൌണ്ടർ സന്തോഷ് പണ്ഡിറ്റ്',
             searchCount: 1200,
+            reliability: 'suspicious',
+            date: new Date().toISOString()
+          },
+          {
+            id: '3',
+            title: 'ഗവൺമെന്റ് എൻജിനിയറിങ് കോളേജ് ഇടുക്കിക്കു എൻബിഎ അക്രഡിറ്റേഷൻ ലഭിച്ചു',
+            searchCount: 1000,
             reliability: 'reliable',
             date: new Date().toISOString()
           }

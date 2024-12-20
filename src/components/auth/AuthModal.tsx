@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
@@ -33,56 +32,55 @@ export function AuthModal({ isOpen, onClose, initialMode = 'login' }: AuthModalP
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-						style={{
+            style={{
               position: 'fixed', // Use fixed positioning
               top: '50%',
               left: '50%',
               transform: 'translate(-50%, -50%)', // Center using transform
             }}
-            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 transform w-full max-w-md z-50"
+            className="bg-white dark:bg-gray-800 rounded-xl shadow-xl p-6 w-full max-w-md z-50"
+            onClick={(e) => e.stopPropagation()} // Prevent click inside modal from closing it
           >
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {mode === 'login' ? t.login : t.signup}
-                </h2>
-                <button
-                  onClick={onClose}
-                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                >
-                  <X className="h-6 w-6" />
-                </button>
-              </div>
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                {mode === 'login' ? t.login : t.signup}
+              </h2>
+              <button
+                onClick={onClose}
+                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
 
-              {mode === 'login' ? <LoginForm /> : <SignupForm />}
+            {mode === 'login' ? <LoginForm onClose={onClose} /> : <SignupForm onClose={onClose} />}
 
-              <div className="mt-4 text-center text-sm text-gray-600 dark:text-gray-400">
-                {mode === 'login' ? (
-                  <>
-                    {language === 'ml' ? 'അക്കൗണ്ട് ഇല്ലേ?' : "Don't have an account?"}{' '}
-                    <button
-                      onClick={() => setMode('signup')}
-                      className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
-                    >
-                      {t.signup}
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    {language === 'ml' ? 'അക്കൗണ്ട് ഉണ്ടോ?' : 'Already have an account?'}{' '}
-                    <button
-                      onClick={() => setMode('login')}
-                      className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
-                    >
-                      {t.login}
-                    </button>
-                  </>
-                )}
-              </div>
+            <div className="mt-4 text-center text-sm text-gray-600 dark:text-gray-400">
+              {mode === 'login' ? (
+                <>
+                  {language === 'ml' ? 'അക്കൗണ്ട് ഇല്ലേ?' : "Don't have an account?"}{' '}
+                  <button
+                    onClick={() => setMode('signup')}
+                    className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
+                  >
+                    {t.signup}
+                  </button>
+                </>
+              ) : (
+                <>
+                  {language === 'ml' ? 'അക്കൗണ്ട് ഉണ്ടോ?' : 'Already have an account?'}{' '}
+                  <button
+                    onClick={() => setMode('login')}
+                    className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
+                  >
+                    {t.login}
+                  </button>
+                </>
+              )}
             </div>
           </motion.div>
         </>
       )}
     </AnimatePresence>
   );
-}
+} 

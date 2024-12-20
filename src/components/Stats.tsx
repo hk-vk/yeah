@@ -39,11 +39,11 @@ export function Stats() {
         : 'detection rate'
     },
     {
-      value: '3.2B',
+      value: '50 L',
       label: language === 'ml' ? 'ജനങ്ങൾ' : 'People',
       description: language === 'ml'
-        ? 'വ്യാജ വാർത്തകളാൽ സ്വാധീനിക്കപ്പെട്ടു'
-        : 'affected by fake news'
+        ? 'കേരളത്തിൽ വ്യാജ വാർത്തകളാൽ സ്വാധീനിക്കപ്പെടുന്നു '
+        : 'affected by fake news in Kerala'
     }
   ];
 
