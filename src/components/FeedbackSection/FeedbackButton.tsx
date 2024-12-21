@@ -19,7 +19,8 @@ export function FeedbackButton({ type, isSelected, onClick }: FeedbackButtonProp
       className={cn(
         'flex items-center space-x-2 transition-all',
         isSelected && type === 'helpful' && 'bg-green-50 text-green-600 border-green-200',
-        isSelected && type === 'unhelpful' && 'bg-red-50 text-red-600 border-red-200'
+        isSelected && type === 'unhelpful' && 'bg-red-50 text-red-600 border-red-200',
+        !isSelected && 'bg-gray-100 text-gray-800 border-gray-300' // More visible color when not selected
       )}
     >
       <Icon className="h-4 w-4" />
