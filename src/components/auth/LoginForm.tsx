@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Mail, Lock, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
@@ -6,19 +6,38 @@ import { Button } from '../common/Button';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { authTranslations } from './translations';
 
-export function LoginForm() {
+interface LoginFormProps {
+  onClose: () => void;
+}
+
+export function LoginForm({ onClose }: LoginFormProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const { login, isLoading } = useAuth();
   const { language } = useLanguage();
   const t = authTranslations[language];
+  const formRef = useRef<HTMLFormElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (formRef.current && !formRef.current.contains(event.target as Node)) {
+        onClose();
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [onClose]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       setError(null);
       await login({ email, password });
+      onClose(); // Call onClose after successful login
     } catch (err) {
       setError(err instanceof Error ? err.message : t.loginError);
     }
@@ -26,6 +45,7 @@ export function LoginForm() {
 
   return (
     <motion.form
+      ref={formRef}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}

@@ -10,13 +10,13 @@ import { useTheme } from '../../contexts/ThemeContext';
 
 export function AuthButtons() {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [mode, setMode] = useState<'login' | 'signup'>('login'); // Changed state name to 'mode'
+  const [mode, setMode] = useState<'login' | 'signup'>('login');
   const { language } = useLanguage();
   const { theme } = useTheme();
   const t = authTranslations[language];
 
   const handleOpenModal = (mode: 'login' | 'signup') => {
-    setMode(mode); // Update the 'mode' state directly
+    setMode(mode);
     setIsModalOpen(true);
   };
 
@@ -57,7 +57,7 @@ export function AuthButtons() {
       <AuthModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        initialMode={mode} // Pass the 'mode' state to AuthModal
+        initialMode={mode}
       />
     </>
   );

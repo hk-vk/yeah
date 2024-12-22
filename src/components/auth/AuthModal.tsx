@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import { LoginForm } from './LoginForm';
@@ -17,6 +17,11 @@ export function AuthModal({ isOpen, onClose, initialMode = 'login' }: AuthModalP
   const { language } = useLanguage();
   const t = authTranslations[language];
 
+  // Update mode when initialMode changes
+  useEffect(() => {
+    setMode(initialMode);
+  }, [initialMode]);
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -25,20 +30,14 @@ export function AuthModal({ isOpen, onClose, initialMode = 'login' }: AuthModalP
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60]"
             onClick={onClose}
           />
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            style={{
-              position: 'fixed', // Use fixed positioning
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)', // Center using transform
-            }}
-            className="bg-white dark:bg-gray-800 rounded-xl shadow-xl p-6 w-full max-w-md z-50"
+            className="fixed top-1/2 left-[calc(50%-300px)] transform -translate-x-1/2 -translate-y-1/2 bg-white dark:bg-gray-800 rounded-xl shadow-[0_0_30px_rgba(0,0,0,0.2)] dark:shadow-[0_0_30px_rgba(0,0,0,0.5)] border border-gray-100 dark:border-gray-700 p-6 w-full max-w-md z-[70] backdrop-blur-md backdrop-filter"
             onClick={(e) => e.stopPropagation()} // Prevent click inside modal from closing it
           >
             <div className="flex justify-between items-center mb-6">
@@ -53,7 +52,13 @@ export function AuthModal({ isOpen, onClose, initialMode = 'login' }: AuthModalP
               </button>
             </div>
 
-            {mode === 'login' ? <LoginForm onClose={onClose} /> : <SignupForm onClose={onClose} />}
+            <div className="mt-4">
+              {mode === 'login' ? (
+                <LoginForm onClose={onClose} />
+              ) : (
+                <SignupForm onClose={onClose} />
+              )}
+            </div>
 
             <div className="mt-4 text-center text-sm text-gray-600 dark:text-gray-400">
               {mode === 'login' ? (
@@ -83,4 +88,4 @@ export function AuthModal({ isOpen, onClose, initialMode = 'login' }: AuthModalP
       )}
     </AnimatePresence>
   );
-} 
+}
