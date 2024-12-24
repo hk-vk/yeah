@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Send } from 'lucide-react';
 import { Button } from '../common/Button';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -9,30 +9,27 @@ interface FeedbackFormProps {
 
 export function FeedbackForm({ onSubmit }: FeedbackFormProps) {
   const [feedback, setFeedback] = useState('');
-  const [showSuccess, setShowSuccess] = useState(false);
+  const [success, setSuccess] = useState(false);
   const { language } = useLanguage();
-  
-  const handleSubmit = (e: React.FormEvent) => {
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (feedback.trim()) {
-      onSubmit(feedback);
-      setFeedback('');
-      setShowSuccess(true);
+      try {
+        await onSubmit(feedback);
+        setSuccess(true);
+        setFeedback('');
+        // Hide message after 3 seconds
+        setTimeout(() => setSuccess(false), 3000);
+      } catch (error) {
+        console.error('Error submitting feedback:', error);
+      }
     }
   };
 
-  useEffect(() => {
-    if (showSuccess) {
-      const timer = setTimeout(() => {
-        setShowSuccess(false);
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [showSuccess]);
-
   return (
-    <div className="relative">
-      <form onSubmit={handleSubmit} className="mt-4">
+    <div className="w-full">
+      <form onSubmit={handleSubmit} className="space-y-4">
         <textarea
           value={feedback}
           onChange={(e) => setFeedback(e.target.value)}
@@ -40,22 +37,24 @@ export function FeedbackForm({ onSubmit }: FeedbackFormProps) {
           className="w-full p-3 border rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-500"
           rows={4}
         />
-        <div className="mt-2 flex justify-end">
+        
+        <div className="flex justify-between items-center">
           <Button
             type="submit"
-            disabled={!feedback.trim() || showSuccess}
-            className="flex items-center space-x-2"
+            disabled={!feedback.trim()}
+            className="flex items-center space-x-2 bg-blue-500 hover:bg-blue-600"
           >
             <Send className="h-4 w-4" />
             <span>{language === 'ml' ? 'സമർപ്പിക്കുക' : 'Submit'}</span>
           </Button>
+          
+          {success && (
+            <div className="inline-block px-4 py-2 bg-green-500 text-white rounded-md ml-4">
+              {language === 'ml' ? 'അഭിപ്രായം സമർപ്പിച്ചു!' : 'Feedback submitted!'}
+            </div>
+          )}
         </div>
       </form>
-      {showSuccess && (
-        <div className="mt-4 text-white text-sm bg-green-600 p-2 rounded-lg text-center animate-fade-in">
-          {language === 'ml' ? 'അഭിപ്രായം സമർപ്പിച്ചു!' : 'Feedback submitted successfully!'}
-        </div>
-      )}
     </div>
   );
 }
