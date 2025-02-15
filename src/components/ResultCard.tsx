@@ -2,7 +2,6 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { ShieldCheck, ShieldAlert } from 'lucide-react';
 import { AnalysisResult } from '../types';
-import { AnalysisIndicator } from './AnalysisIndicator';
 import { useLanguage } from '../contexts/LanguageContext';
 import { translations } from '../locales/translations';
 import { GlassCard } from './common/GlassCard';
@@ -15,6 +14,9 @@ export function ResultCard({ result }: Props) {
   const { language } = useLanguage();
   const t = translations[language];
 
+  // Convert confidence from 0-1 to percentage
+  const confidencePercentage = Math.round(result.CONFIDENCE * 100);
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
@@ -25,7 +27,7 @@ export function ResultCard({ result }: Props) {
         <div className="absolute inset-0 bg-gradient-to-br from-white/50 to-white/30 dark:from-gray-800/50 dark:to-gray-800/30" />
         <div className="relative p-6">
           <div className="flex items-center justify-center mb-6">
-            {result.isReliable ? (
+            {result.ISFAKE === 0 ? (
               <motion.div
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
@@ -51,17 +53,8 @@ export function ResultCard({ result }: Props) {
               {t.analysisTitle}
             </h3>
             <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
-              {result.analysis}
+              {result.EXPLANATION}
             </p>
-          </div>
-
-          <div className="mb-6">
-            <h3 className="text-lg font-semibold mb-4 text-gray-800 dark:text-gray-100">
-              {t.indicatorsTitle}
-            </h3>
-            {result.indicators.map((indicator, index) => (
-              <AnalysisIndicator key={index} indicator={indicator} />
-            ))}
           </div>
 
           <div className="text-sm text-center">
@@ -72,7 +65,7 @@ export function ResultCard({ result }: Props) {
               className="inline-block px-4 py-2 bg-blue-50 dark:bg-blue-900/30 rounded-full"
             >
               <span className="text-blue-700 dark:text-blue-300">
-                {t.confidenceScore}: {result.confidence}%
+                {t.confidenceScore}: {confidencePercentage}%
               </span>
             </motion.div>
           </div>

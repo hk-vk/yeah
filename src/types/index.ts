@@ -24,9 +24,28 @@ export interface IndicatorResult {
 
 export type InputType = 'text' | 'url' | 'image';
 
-export type AnalysisResult = {
-  isReliable: boolean;
-  confidence: number;
-  analysis: string;
-  indicators: IndicatorResult[];
+export interface Indicator {
+  name: string;
+  status: 'success' | 'warning' | 'error';
+}
+
+export interface AnalysisResult {
+  ISFAKE: number;
+  CONFIDENCE: number;
+  EXPLANATION: string;
+}
+
+export interface AuthResponse {
+  user: any;
+  session: any;
+}
+
+export type AnalysisIndicator = {
+  title: string;
+  score: number;
+  description: string;
 };
+
+export interface AnalysisRequest {
+  query: string;
+}
