@@ -11,10 +11,12 @@ import toast from 'react-hot-toast';
 export function MainContent() {
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [currentContent, setCurrentContent] = useState<string>('');
 
   const handleAnalyze = async ({ content }: { type: string; content: string }) => {
     setIsAnalyzing(true);
     setResult(null);
+    setCurrentContent(content);
     
     try {
       const analysisResult = await analyzeService.analyzeContent(content);
@@ -47,7 +49,7 @@ export function MainContent() {
           <LoadingSpinner />
         ) : result ? (
           <>
-            <ResultCard result={result} />
+            <ResultCard result={result} content={currentContent} />
             <FeedbackSection />
           </>
         ) : null}

@@ -6,6 +6,7 @@ export const API_CONFIG = {
     ANALYSIS: '/api/analysis/store-analysis',
     FEEDBACK: '/api/feedback/submit',
     REVERSE_SEARCH: '/api/reverse-searchy',
+    WRITING_STYLE: '/api/writing-style',
     AUTH: {
       LOGIN: '/auth/login',
       REGISTER: '/auth/register',

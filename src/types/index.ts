@@ -35,6 +35,12 @@ export interface AnalysisResult {
   EXPLANATION: string;
 }
 
+export interface WritingStyleResult {
+  sensationalism: number;
+  writingStyle: number;
+  clickbait: number;
+}
+
 export interface AuthResponse {
   user: any;
   session: any;

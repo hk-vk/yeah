@@ -4,39 +4,39 @@ export const INDICATORS: Record<string, IndicatorType> = {
   sensationalism: {
     id: 'sensationalism',
     translations: {
-      ml: {
-        name: 'സെൻസേഷണലിസം',
-        description: 'സെൻസേഷണൽ ഭാഷയുടെയും അമിത വികാര പ്രകടനത്തിന്റെയും അളവ്'
-      },
       en: {
         name: 'Sensationalism',
-        description: 'Measure of sensational language and emotional manipulation'
+        description: 'Measures the level of exaggerated or dramatic content'
+      },
+      ml: {
+        name: 'അതിശയോക്തി',
+        description: 'ഉള്ളടക്കത്തിന്റെ അതിശയോക്തി നിലവാരം അളക്കുന്നു'
       }
     }
   },
   writingStyle: {
     id: 'writingStyle',
     translations: {
+      en: {
+        name: 'Writing Quality',
+        description: 'Assesses the overall quality and professionalism of the writing'
+      },
       ml: {
         name: 'എഴുത്ത് ശൈലി',
-        description: 'വാർത്താ റിപ്പോർട്ടിംഗ് മാനദണ്ഡങ്ങളുമായുള്ള യോജിപ്പ്'
-      },
-      en: {
-        name: 'Writing Style',
-        description: 'Adherence to journalistic standards and writing conventions'
+        description: 'എഴുത്തിന്റെ പൊതുവായ ഗുണനിലവാരവും പ്രൊഫഷണലിസവും വിലയിരുത്തുന്നു'
       }
     }
   },
   clickbait: {
     id: 'clickbait',
     translations: {
-      ml: {
-        name: 'ക്ലിക്ക്ബെയ്റ്റ് പാറ്റേണുകൾ',
-        description: 'വായനക്കാരെ ആകർഷിക്കാനുള്ള അമിത ശ്രമങ്ങൾ'
-      },
       en: {
-        name: 'Clickbait Patterns',
-        description: 'Presence of manipulative attention-grabbing techniques'
+        name: 'Clickbait Score',
+        description: 'Indicates the presence of clickbait tactics and misleading headlines'
+      },
+      ml: {
+        name: 'ക്ലിക്ക്ബൈറ്റ് സ്കോർ',
+        description: 'തെറ്റിദ്ധരിപ്പിക്കുന്ന തലക്കെട്ടുകളുടെയും ക്ലിക്ക്ബൈറ്റ് തന്ത്രങ്ങളുടെയും സാന്നിധ്യം സൂചിപ്പിക്കുന്നു'
       }
     }
   },

@@ -24,16 +24,16 @@ export function AnalysisIndicator({ indicator }: Props) {
   return (
     <div className="mb-4">
       <div className="flex justify-between items-center mb-1">
-        <span className="text-sm font-medium text-gray-100">{name}</span>
-        <span className="text-sm text-gray-300">{indicator.score}%</span>
+        <span className="text-sm font-medium text-gray-800 dark:text-gray-100">{name}</span>
+        <span className="text-sm text-gray-600 dark:text-gray-300">{indicator.score}%</span>
       </div>
-      <div className="w-full bg-gray-700 rounded-full h-2.5">
+      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
         <div
           className={`h-2.5 rounded-full ${getColorClass(indicator.score)}`}
           style={{ width: `${indicator.score}%` }}
         ></div>
       </div>
-      <p className="text-xs text-gray-300 mt-1">{description}</p>
+      <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">{description}</p>
     </div>
   );
 }
