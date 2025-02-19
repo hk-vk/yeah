@@ -14,7 +14,7 @@ export function LoginForm({ onClose }: LoginFormProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const { login, isLoading } = useAuth();
+  const { signIn, loading: isLoading } = useAuth();
   const { language } = useLanguage();
   const t = authTranslations[language];
   const formRef = useRef<HTMLFormElement>(null);
@@ -36,7 +36,7 @@ export function LoginForm({ onClose }: LoginFormProps) {
     e.preventDefault();
     try {
       setError(null);
-      await login({ email, password });
+      await signIn(email, password);
       onClose(); // Call onClose after successful login
     } catch (err) {
       setError(err instanceof Error ? err.message : t.loginError);

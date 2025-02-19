@@ -20,6 +20,7 @@ export interface IndicatorType {
 export interface IndicatorResult {
   id: string;
   score: number;
+  title?: string;  // Optional title for custom display text
 }
 
 export type InputType = 'text' | 'url' | 'image';

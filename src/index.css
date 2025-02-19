@@ -143,3 +143,25 @@
     transform: rotate(360deg);
   }
 }
+
+/* Malayalam Text Optimizations */
+.malayalam-text {
+  font-family: 'Manjari', 'Noto Sans Malayalam', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  letter-spacing: 0.01em;
+  line-height: 1.8;
+  text-align: left; /* Force left alignment */
+  direction: ltr; /* Force left-to-right direction */
+}
+
+.malayalam-text h1,
+.malayalam-text h2,
+.malayalam-text h3 {
+  line-height: 2;
+  text-align: left;
+}
+
+.malayalam-text .indicator-text {
+  line-height: 1.6;
+  font-size: 1.1em;
+  text-align: left;
+}

@@ -6,11 +6,11 @@ export const INDICATORS: Record<string, IndicatorType> = {
     translations: {
       en: {
         name: 'Sensationalism',
-        description: 'Measures the level of exaggerated or dramatic content'
+        description: 'Measures how exaggerated or dramatic the content is'
       },
       ml: {
         name: 'അതിശയോക്തി',
-        description: 'ഉള്ളടക്കത്തിന്റെ അതിശയോക്തി നിലവാരം അളക്കുന്നു'
+        description: 'ഉള്ളടക്കം എത്രമാത്രം നാടകീയമാണെന്ന് അളക്കുന്നു'
       }
     }
   },
@@ -19,11 +19,11 @@ export const INDICATORS: Record<string, IndicatorType> = {
     translations: {
       en: {
         name: 'Writing Quality',
-        description: 'Assesses the overall quality and professionalism of the writing'
+        description: 'Measures the overall quality and professionalism of the writing'
       },
       ml: {
-        name: 'എഴുത്ത് ശൈലി',
-        description: 'എഴുത്തിന്റെ പൊതുവായ ഗുണനിലവാരവും പ്രൊഫഷണലിസവും വിലയിരുത്തുന്നു'
+        name: 'എഴുത്ത് നിലവാരം',
+        description: 'എഴുത്തിന്റെ മൊത്തത്തിലുള്ള ഗുണനിലവാരവും പ്രൊഫഷണൽ സ്വഭാവവും അളക്കുന്നു'
       }
     }
   },
@@ -32,11 +32,11 @@ export const INDICATORS: Record<string, IndicatorType> = {
     translations: {
       en: {
         name: 'Clickbait Score',
-        description: 'Indicates the presence of clickbait tactics and misleading headlines'
+        description: 'Detects misleading headlines and attention-grabbing tactics'
       },
       ml: {
         name: 'ക്ലിക്ക്ബൈറ്റ് സ്കോർ',
-        description: 'തെറ്റിദ്ധരിപ്പിക്കുന്ന തലക്കെട്ടുകളുടെയും ക്ലിക്ക്ബൈറ്റ് തന്ത്രങ്ങളുടെയും സാന്നിധ്യം സൂചിപ്പിക്കുന്നു'
+        description: 'തെറ്റിദ്ധരിപ്പിക്കുന്ന തലക്കെട്ടുകളും ശ്രദ്ധ നേടാനുള്ള തന്ത്രങ്ങളും കണ്ടെത്തുന്നു'
       }
     }
   },

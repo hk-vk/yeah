@@ -12,10 +12,31 @@ interface WritingStyleResult {
   clickbait: number;
 }
 
+// Create a shared fetch client with connection pooling
+const createFetchClient = () => {
+  const controller = new AbortController();
+  return {
+    fetch: (url: string, options: RequestInit = {}) => {
+      return fetch(url, {
+        ...options,
+        signal: controller.signal,
+        keepalive: true,
+        headers: {
+          ...options.headers,
+          'Connection': 'keep-alive',
+        },
+      });
+    },
+    abort: () => controller.abort(),
+  };
+};
+
+const fetchClient = createFetchClient();
+
 export const analyzeService = {
   async analyzeContent(content: string): Promise<AnalysisResult> {
     try {
-      const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.REVERSE_SEARCH}`, {
+      const response = await fetchClient.fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.REVERSE_SEARCH}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -36,7 +57,7 @@ export const analyzeService = {
 
   async analyzeWritingStyle(content: string): Promise<WritingStyleResult> {
     try {
-      const response = await fetch(`${API_CONFIG.BASE_URL}/api/writing-style`, {
+      const response = await fetchClient.fetch(`${API_CONFIG.BASE_URL}/api/writing-style`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

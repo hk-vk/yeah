@@ -15,28 +15,17 @@ export function SignupForm({ onClose }: SignupFormProps) {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const formRef = useRef<HTMLFormElement>(null);
-  const { signup, isLoading } = useAuth();
+  const { signUp, loading } = useAuth();
   const { language } = useLanguage();
   const t = authTranslations[language];
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      setError(null);
-      await signup({ email, password, name });
-      onClose(); // Close the modal after successful signup
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t.signupError);
-    }
-  };
+  const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
+    function handleClickOutside(event: MouseEvent) {
       if (formRef.current && !formRef.current.contains(event.target as Node)) {
         onClose();
       }
-    };
+    }
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
@@ -44,9 +33,23 @@ export function SignupForm({ onClose }: SignupFormProps) {
     };
   }, [onClose]);
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      setError(null);
+      await signUp(email, password, name);
+      onClose(); // Call onClose after successful signup
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t.signupError);
+    }
+  };
+
   return (
     <motion.form
       ref={formRef}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
       onSubmit={handleSubmit}
       className="space-y-4"
     >
@@ -115,9 +118,9 @@ export function SignupForm({ onClose }: SignupFormProps) {
       <Button
         type="submit"
         className="w-full"
-        disabled={isLoading}
+        disabled={loading}
       >
-        {isLoading ? t.signingUp : t.signup}
+        {loading ? t.signingUp : t.signup}
       </Button>
     </motion.form>
   );

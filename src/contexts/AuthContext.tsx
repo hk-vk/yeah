@@ -1,35 +1,16 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { User } from '@supabase/supabase-js';
-import { authService } from '../services/authService';
+import { AuthContextType, User } from '../types/auth';
 import { toast } from 'react-hot-toast';
-
-interface AuthContextType {
-  user: User | null;
-  loading: boolean;
-  signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, name?: string) => Promise<void>;
-  signOut: () => Promise<void>;
-}
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Export hook first to maintain consistent exports
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
-
-// Then export the provider component
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Check active session
     const initializeAuth = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
@@ -43,7 +24,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     initializeAuth();
 
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       setUser(session?.user ?? null);
       setLoading(false);
@@ -57,6 +37,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signIn = async (email: string, password: string) => {
     try {
       setLoading(true);
+      setError(null);
       const { data: { user }, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -68,6 +49,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         toast.success('Successfully logged in!');
       }
     } catch (error: any) {
+      setError(error.message || 'Login failed');
       toast.error(error.message || 'Login failed');
       throw error;
     } finally {
@@ -75,9 +57,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const signUp = async (email: string, password: string, name?: string) => {
+  const signUp = async (email: string, password: string, name: string) => {
     try {
       setLoading(true);
+      setError(null);
       const { data: { user }, error } = await supabase.auth.signUp({
         email,
         password,
@@ -92,6 +75,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         toast.success('Successfully registered! Please check your email for verification.');
       }
     } catch (error: any) {
+      setError(error.message || 'Registration failed');
       toast.error(error.message || 'Registration failed');
       throw error;
     } finally {
@@ -102,11 +86,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signOut = async () => {
     try {
       setLoading(true);
+      setError(null);
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
       setUser(null);
       toast.success('Successfully logged out!');
     } catch (error: any) {
+      setError(error.message || 'Logout failed');
       toast.error(error.message || 'Logout failed');
       throw error;
     } finally {
@@ -114,9 +100,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  return (
-    <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut }}>
-      {!loading && children}
-    </AuthContext.Provider>
-  );
-};
+  const value = {
+    user,
+    signIn,
+    signUp,
+    signOut,
+    loading,
+    error
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+}

@@ -1,9 +1,9 @@
 export const authTranslations = {
   ml: {
     login: 'ലോഗിൻ',
-    signup: 'അക്കൗണ്ട് സൃഷ്ടിക്കുക',
+    signup: 'രജിസ്റ്റർ',
     loggingIn: 'പ്രവേശിക്കുന്നു...',
-    signingUp: 'അക്കൗണ്ട് സൃഷ്ടിക്കുന്നു...',
+    signingUp: 'രജിസ്റ്റർ ചെയ്യുന്നു...',
     email: 'ഇമെയിൽ',
     password: 'പാസ്‌വേഡ്',
     name: 'പേര്',
@@ -11,7 +11,13 @@ export const authTranslations = {
     passwordPlaceholder: 'നിങ്ങളുടെ പാസ്‌വേഡ്',
     namePlaceholder: 'നിങ്ങളുടെ പേര്',
     loginError: 'ലോഗിൻ പരാജയപ്പെട്ടു',
-    signupError: 'അക്കൗണ്ട് സൃഷ്ടിക്കൽ പരാജയപ്പെട്ടു'
+    signupError: 'രജിസ്ട്രേഷൻ പരാജയപ്പെട്ടു',
+    dontHaveAccount: 'അക്കൗണ്ട് ഇല്ലേ?',
+    alreadyHaveAccount: 'അക്കൗണ്ട് ഉണ്ടോ?',
+    signupSuccess: 'രജിസ്ട്രേഷൻ വിജയകരം! ദയവായി നിങ്ങളുടെ ഇമെയിൽ പരിശോധിക്കുക.',
+    loginSuccess: 'വിജയകരമായി ലോഗിൻ ചെയ്തു!',
+    logoutSuccess: 'വിജയകരമായി ലോഗ്ഔട്ട് ചെയ്തു!',
+    logout: 'ലോഗ്ഔട്ട്'
   },
   en: {
     login: 'Login',
@@ -25,6 +31,12 @@ export const authTranslations = {
     passwordPlaceholder: 'Your password',
     namePlaceholder: 'Your name',
     loginError: 'Login failed',
-    signupError: 'Sign up failed'
+    signupError: 'Sign up failed',
+    dontHaveAccount: "Don't have an account?",
+    alreadyHaveAccount: 'Already have an account?',
+    signupSuccess: 'Successfully registered! Please check your email for verification.',
+    loginSuccess: 'Successfully logged in!',
+    logoutSuccess: 'Successfully logged out!',
+    logout: 'Logout'
   }
 };

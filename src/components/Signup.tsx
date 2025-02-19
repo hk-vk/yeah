@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { validateEmail, validatePassword } from '../utils/validation';
 
 const Signup = () => {
-  const { signup, isLoading, error } = useAuth();
+  const { signUp, loading: isLoading, error } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
@@ -27,8 +27,9 @@ const Signup = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
+    
     try {
-      await signup({ email, password, name });
+      await signUp(email, password, name);
     } catch (err) {
       console.error(err);
     }
@@ -66,7 +67,7 @@ const Signup = () => {
         {validationErrors.password && <p className="error">{validationErrors.password}</p>}
       </div>
       <button type="submit" disabled={isLoading}>
-        {isLoading ? 'Signing up...' : 'Signup'}
+        {isLoading ? 'Signing up...' : 'Sign up'}
       </button>
       {error && <p>{error}</p>}
     </form>

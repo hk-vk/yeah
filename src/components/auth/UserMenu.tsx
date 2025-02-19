@@ -6,7 +6,7 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import { authTranslations } from './translations';
 
 export function UserMenu() {
-  const { user, logout } = useAuth();
+  const { user, signOut } = useAuth();
   const { language } = useLanguage();
   const t = authTranslations[language];
 
@@ -34,7 +34,7 @@ export function UserMenu() {
           className="absolute right-0 mt-2 w-48 py-2 bg-white dark:bg-gray-800 rounded-lg shadow-xl invisible group-hover:visible"
         >
           <button
-            onClick={logout}
+            onClick={signOut}
             className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
           >
             <LogOut className="h-4 w-4 mr-2" />

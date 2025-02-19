@@ -43,7 +43,13 @@ export const translations = {
     viewAll: 'എല്ലാം കാണുക',
     searchCount: 'തിരയൽ എണ്ണം',
     noTrendingData: 'ട്രെൻഡിംഗ് ഡാറ്റ ഇല്ല',
-    trendingTitle: 'ട്രെൻഡിംഗ് വാർത്തകൾ'
+    trendingTitle: 'ട്രെൻഡിംഗ് വാർത്തകൾ',
+    // Writing Style Analysis translations
+    writingStyleAnalysis: 'എഴുത്ത് ശൈലി വിശകലനം',
+    sensationalismScore: 'അതിശയോക്തി സ്കോർ',
+    writingStyleScore: 'എഴുത്ത് ഗുണനിലവാരം',
+    clickbaitScore: 'ക്ലിക്ക്ബൈറ്റ് സ്കോർ',
+    highSensationalism: 'ഉയർന്ന അതിശയോക്തി കണ്ടെത്തി'
   },
   en: {
     title: 'YEAH!',
@@ -89,6 +95,12 @@ export const translations = {
     viewAll: 'View All',
     searchCount: 'Search Count',
     noTrendingData: 'No trending data',
-    trendingTitle: 'Trending News'
+    trendingTitle: 'Trending News',
+    // Writing Style Analysis translations
+    writingStyleAnalysis: 'Writing Style Analysis',
+    sensationalismScore: 'Sensationalism Score',
+    writingStyleScore: 'Writing Quality',
+    clickbaitScore: 'Clickbait Score',
+    highSensationalism: 'High sensationalism detected'
   }
 };
