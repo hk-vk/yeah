@@ -33,7 +33,8 @@ export interface Indicator {
 export interface AnalysisResult {
   ISFAKE: number;
   CONFIDENCE: number;
-  EXPLANATION: string;
+  EXPLANATION_EN: string;
+  EXPLANATION_ML: string;
 }
 
 export interface WritingStyleResult {

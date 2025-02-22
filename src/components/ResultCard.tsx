@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { FC, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { ShieldCheck, ShieldAlert, FileText, AlertTriangle, TrendingUp } from 'lucide-react';
 import { AnalysisResult, WritingStyleResult } from '../types';
@@ -9,12 +9,12 @@ import { analyzeService } from '../services/analyzeService';
 import { AnalysisIndicator } from './AnalysisIndicator';
 import clsx from 'clsx';
 
-interface Props {
+interface ResultCardProps {
   result: AnalysisResult;
   content?: string;
 }
 
-export function ResultCard({ result, content }: Props) {
+export const ResultCard: FC<ResultCardProps> = ({ result, content }) => {
   const { language } = useLanguage();
   const t = translations[language];
   const [writingStyle, setWritingStyle] = useState<WritingStyleResult | null>(null);
@@ -53,6 +53,7 @@ export function ResultCard({ result, content }: Props) {
   ] : [];
 
   const confidencePercentage = Math.round(result.CONFIDENCE * 100);
+  const explanation = language === 'ml' ? result.EXPLANATION_ML : result.EXPLANATION_EN;
 
   return (
     <motion.div
@@ -108,7 +109,7 @@ export function ResultCard({ result, content }: Props) {
               "text-gray-600 dark:text-gray-300",
               isMalayalam && "text-lg leading-loose"
             )}>
-              {result.EXPLANATION}
+              {explanation}
             </p>
           </div>
 
@@ -148,8 +149,7 @@ export function ResultCard({ result, content }: Props) {
               className={clsx(
                 "inline-block px-4 py-2 bg-blue-50 dark:bg-blue-900/30 rounded-full",
                 isMalayalam && "text-base"
-              )}
-            >
+              )}>
               <span className="text-blue-700 dark:text-blue-300">
                 {t.confidenceScore}: {confidencePercentage}%
               </span>
