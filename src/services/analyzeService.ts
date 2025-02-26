@@ -99,6 +99,26 @@ export const analyzeService = {
             console.error('Error during writing style analysis:', error);
             throw error;
         }
+    },
+
+    async searchReverseContent(content: string): Promise<any> {
+        try {
+            const response = await connectionManager.fetch(
+                `${API_CONFIG.BASE_URL}/search/reverse`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ content }),
+                }
+            );
+
+            return await response.json();
+        } catch (error) {
+            console.error('Error performing reverse search:', error);
+            throw error;
+        }
     }
 };
 
