@@ -1,18 +1,26 @@
-import { createWorker, RecognizeResult } from 'tesseract.js';
+import { createWorker, Worker } from 'tesseract.js';
 
 interface OcrResult {
   text: string;
   confidence: number;
+  language?: string;
 }
 
 class OcrService {
-  private worker: any = null;
+  private mainWorker: Worker | null = null;
+  private malayalamWorker: Worker | null = null;
   private isInitializing = false;
   private initPromise: Promise<void> | null = null;
 
-  // Initialize the OCR worker with the specified languages
-  private async initializeWorker(languages = ['eng', 'mal']) {
-    if (this.worker || this.isInitializing) {
+  private async createWorkerWithLanguage(lang: string): Promise<Worker> {
+    const worker = await createWorker();
+    await worker.loadLanguage(lang);
+    await worker.initialize(lang);
+    return worker;
+  }
+
+  private async initializeWorkers() {
+    if ((this.mainWorker && this.malayalamWorker) || this.isInitializing) {
       return this.initPromise;
     }
 
@@ -20,17 +28,36 @@ class OcrService {
     
     this.initPromise = new Promise<void>(async (resolve) => {
       try {
-        console.log('Initializing OCR worker...');
-        // Remove the logger to prevent cloning functions
-        this.worker = await createWorker();
+        console.log('Initializing OCR workers...');
         
-        await this.worker.loadLanguage(languages.join('+'));
-        await this.worker.initialize(languages.join('+'));
-        console.log('OCR worker initialized successfully');
+        // Initialize workers in parallel
+        const [mainWorker, malayalamWorker] = await Promise.all([
+          this.createWorkerWithLanguage('eng'),
+          this.createWorkerWithLanguage('mal')
+        ]);
+
+        this.mainWorker = mainWorker;
+        this.malayalamWorker = malayalamWorker;
+
+        // Configure workers
+        await Promise.all([
+          this.mainWorker.setParameters({
+            preserve_interword_spaces: '1',
+            tessedit_pageseg_mode: '6'
+          }),
+          this.malayalamWorker.setParameters({
+            preserve_interword_spaces: '1',
+            tessedit_pageseg_mode: '6',
+            tessedit_enable_dict_correction: '1'
+          })
+        ]);
+
+        console.log('OCR workers initialized successfully');
         resolve();
       } catch (error) {
-        console.error('Failed to initialize OCR worker:', error);
-        this.worker = null;
+        console.error('Failed to initialize OCR workers:', error);
+        this.mainWorker = null;
+        this.malayalamWorker = null;
         resolve();
       } finally {
         this.isInitializing = false;
@@ -40,51 +67,95 @@ class OcrService {
     return this.initPromise;
   }
 
-  // Detect text from an image
+  private isMalayalamText(text: string): boolean {
+    const malayalamRegex = /[\u0D00-\u0D7F]/;
+    return malayalamRegex.test(text);
+  }
+
   async detectText(imageData: string): Promise<OcrResult> {
     try {
-      await this.initializeWorker();
+      await this.initializeWorkers();
       
-      if (!this.worker) {
-        throw new Error('OCR worker could not be initialized');
+      if (!this.mainWorker || !this.malayalamWorker) {
+        throw new Error('OCR workers could not be initialized');
       }
 
-      // Handle the image data properly
-      const result: RecognizeResult = await this.worker.recognize(imageData);
-      const text = result.data.text.trim();
-      const confidence = result.data.confidence;
-      
-      return { 
-        text: text || '', 
-        confidence: confidence || 0 
+      // Try both workers in parallel
+      const [engResult, malResult] = await Promise.all([
+        this.mainWorker.recognize(imageData),
+        this.malayalamWorker.recognize(imageData)
+      ]);
+
+      // Compare results and choose the better one
+      let text = '';
+      let confidence = 0;
+      let language = 'eng';
+
+      const engText = engResult.data.text.trim();
+      const malText = malResult.data.text.trim();
+
+      const hasMalayalam = this.isMalayalamText(malText);
+
+      if (hasMalayalam && malResult.data.confidence > 35) {
+        text = malText;
+        confidence = malResult.data.confidence;
+        language = 'mal';
+      } else if (engResult.data.confidence > 50) {
+        text = engText;
+        confidence = engResult.data.confidence;
+        language = 'eng';
+      } else {
+        // If neither result is confident enough, return the one with higher confidence
+        if (malResult.data.confidence > engResult.data.confidence) {
+          text = malText;
+          confidence = malResult.data.confidence;
+          language = 'mal';
+        } else {
+          text = engText;
+          confidence = engResult.data.confidence;
+          language = 'eng';
+        }
+      }
+
+      // Clean up the text
+      text = text
+        .replace(/[\n\r]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      return {
+        text,
+        confidence,
+        language
       };
     } catch (error) {
       console.error('Text detection failed:', error);
-      // Return empty result on error instead of throwing
       return {
         text: '',
-        confidence: 0
+        confidence: 0,
+        language: 'unknown'
       };
     }
   }
 
-  // Terminate the worker when not needed anymore
   async terminate() {
-    if (this.worker) {
-      try {
-        await this.worker.terminate();
-      } catch (error) {
-        console.error('Error terminating worker:', error);
+    try {
+      if (this.mainWorker) {
+        await this.mainWorker.terminate();
+        this.mainWorker = null;
       }
-      this.worker = null;
+      if (this.malayalamWorker) {
+        await this.malayalamWorker.terminate();
+        this.malayalamWorker = null;
+      }
+    } catch (error) {
+      console.error('Error terminating workers:', error);
     }
   }
 }
 
-// Create a singleton instance
 const ocrService = new OcrService();
 
-// Clean up worker on page unload
 if (typeof window !== 'undefined') {
   window.addEventListener('beforeunload', () => {
     ocrService.terminate();

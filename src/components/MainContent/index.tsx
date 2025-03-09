@@ -1,67 +1,47 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { InputSection } from '../InputSection';
 import { ResultCard } from '../ResultCard';
 import { ImageResultCard } from '../ImageResultCard';
 import { FeedbackSection } from '../FeedbackSection';
 import { LoadingSpinner } from './LoadingSpinner';
-import type { AnalysisResult, InputType } from '../../types';
+import { AnalysisHistory } from '../AnalysisHistory';
+import type { AnalysisResult, ImageAnalysisResult, TextAnalysisResult, InputType } from '../../types/analysis';
 import { analyzeService } from '../../services/analyzeService';
-import { ocrService } from '../../services/ocrService';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { useAuth } from '../../contexts/AuthContext';
 import clsx from 'clsx';
+import { feedbackService } from '../../services/feedbackService';
 
-interface ImageAnalysisResult {
-  verdict: string;
-  score: number;
-  details: {
-    ai_generated: boolean;
-    reverse_search: {
-      found: boolean;
-      matches?: any[];
-    };
-    deepfake: boolean;
-    tampering_analysis: boolean;
-    image_caption: string;
-    text_analysis?: {
-      user_text: string;
-      extracted_text: string;
-      mismatch: boolean;
-      context_similarity: number;
-      context_mismatch: boolean;
-    };
-  };
+const DEBUG_OCR = true; // Enable debug mode for OCR
+
+function isTextAnalysisResult(result: AnalysisResult): result is TextAnalysisResult {
+  return 'ISFAKE' in result && 'type' in result;
+}
+
+function isImageAnalysisResult(result: AnalysisResult): result is ImageAnalysisResult {
+  return 'details' in result && 'type' in result;
 }
 
 export function MainContent() {
-  const [textResult, setTextResult] = useState<AnalysisResult | null>(null);
+  const [textResult, setTextResult] = useState<TextAnalysisResult | null>(null);
   const [imageResult, setImageResult] = useState<ImageAnalysisResult | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [currentContent, setCurrentContent] = useState<string>('');
   const [currentImageContent, setCurrentImageContent] = useState<string | null>(null);
   const [extractedText, setExtractedText] = useState<string>('');
-  const [analysisType, setAnalysisType] = useState<InputType>('text');
   const [activeResultIndex, setActiveResultIndex] = useState(0);
   const { language } = useLanguage();
+  const { user } = useAuth();
+  const cardRefs = {
+    image: useRef<HTMLDivElement>(null),
+    text: useRef<HTMLDivElement>(null)
+  };
 
-  // Add keyboard navigation controls
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Only handle keyboard navigation if we have both results
-      if (textResult && imageResult) {
-        if (e.key === 'ArrowLeft' && activeResultIndex === 1) {
-          navigateResults('prev');
-        } else if (e.key === 'ArrowRight' && activeResultIndex === 0) {
-          navigateResults('next');
-        }
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeResultIndex, textResult, imageResult]);
+  // Helper function to convert undefined to null for ImageResultCard
+  const imageUrlForCard = (url: string | undefined): string | null => url || null;
 
   const handleAnalyze = async ({ 
     type, 
@@ -76,7 +56,6 @@ export function MainContent() {
     setTextResult(null);
     setImageResult(null);
     setExtractedText('');
-    setAnalysisType(type);
     
     const processedContent = content.trim();
     setCurrentContent(processedContent);
@@ -86,211 +65,84 @@ export function MainContent() {
       // TEXT ONLY CASE: Analyze text without image
       if (processedContent && !imageContent) {
         try {
-          const textResult = await analyzeService.analyzeContent(processedContent);
-          setTextResult(textResult);
-          setActiveResultIndex(0); // Default to showing text result for text-only input
+          const result = await analyzeService.analyzeContent(processedContent, user?.id);
+          if (isTextAnalysisResult(result)) {
+            setTextResult({
+              ...result,
+              type: 'text'
+            });
+            setActiveResultIndex(0); // Show text analysis
+          }
         } catch (error) {
           console.error('Text analysis failed:', error);
-          toast.error('Text analysis failed. Please try again.');
+          toast.error(
+            language === 'ml' 
+              ? 'വാചക വിശകലനം പരാജയപ്പെട്ടു' 
+              : 'Text analysis failed'
+          );
         }
         setIsAnalyzing(false);
         return;
       }
 
-      // Perform OCR on image if available
-      let detectedText = '';
+      // IMAGE CASE: Handle image analysis
       if (imageContent) {
         try {
-          const ocrToastId = toast.loading(
-            language === 'ml' 
-              ? 'ചിത്രത്തിൽ നിന്ന് വാചകം കണ്ടെത്തുന്നു...' 
-              : 'Detecting text from image...'
-          );
-          
-          // Use a timeout to ensure we don't wait forever
-          const timeoutPromise = new Promise<{text: string, confidence: number}>((_, reject) => {
-            setTimeout(() => reject(new Error('OCR timed out')), 30000);
-          });
-          
-          // Race between OCR and timeout
-          const { text, confidence } = await Promise.race([
-            ocrService.detectText(imageContent),
-            timeoutPromise
-          ]);
-          
-          detectedText = text;
-          setExtractedText(text);
-          
-          if (text && text.length > 5) {
-            toast.success(
-              language === 'ml' 
-                ? 'ചിത്രത്തിൽ നിന്ന് വാചകം കണ്ടെത്തി' 
-                : 'Text detected from image',
-              { id: ocrToastId }
-            );
-            console.log('Detected text from image:', text, 'Confidence:', confidence);
-          } else {
-            toast.dismiss(ocrToastId);
-          }
-        } catch (ocrError) {
-          console.error('OCR failed:', ocrError);
-          toast.error(
-            language === 'ml' 
-              ? 'ചിത്രത്തിൽ നിന്ന് വാചകം കണ്ടെത്താൻ കഴിഞ്ഞില്ല' 
-              : 'Could not detect text from image'
-          );
-        }
-      }
-      
-      // IMAGE ONLY CASE with extracted text
-      if (imageContent && !processedContent && detectedText.length > 10) {
-        // Run both image analysis and text analysis from extracted text
-        const imageBlob = dataURLtoBlob(imageContent);
-        const formData = new FormData();
-        formData.append('image', imageBlob, 'image.jpg');
-        
-        const [imageAnalysisResult, textAnalysisResult] = await Promise.allSettled([
-          // Image analysis
-          fetch('https://settling-presently-giraffe.ngrok-free.app/analyze', {
-            method: 'POST',
-            body: formData,
-            mode: 'cors',
-          }).then(response => {
-            if (!response.ok) {
-              throw new Error(`Image analysis failed with status: ${response.status}`);
+          const result = await analyzeService.analyzeImage(imageContent, processedContent || undefined, user?.id);
+          if (isImageAnalysisResult(result)) {
+            setImageResult({
+              ...result,
+              type: 'image'
+            });
+
+            // If there's text analysis in the response, set it
+            if (result.details?.text_analysis) {
+              const extractedText = result.details.text_analysis.extracted_text;
+              if (extractedText) {
+                setExtractedText(extractedText);
+                
+                // If no user text was provided, analyze the extracted text
+                if (!processedContent) {
+                  try {
+                    const textResult = await analyzeService.analyzeContent(extractedText, user?.id);
+                    if (isTextAnalysisResult(textResult)) {
+                      setTextResult({
+                        ...textResult,
+                        type: 'text'
+                      });
+                      setCurrentContent(extractedText);
+                    }
+                  } catch (error) {
+                    console.error('Extracted text analysis failed:', error);
+                  }
+                }
+              }
             }
-            return response.json();
-          }),
-          // Text analysis of the extracted text
-          analyzeService.analyzeContent(detectedText)
-        ]);
-        
-        if (imageAnalysisResult.status === 'fulfilled') {
-          setImageResult(imageAnalysisResult.value);
-        } else {
-          toast.error(
-            language === 'ml' 
-              ? 'ചിത്ര വിശകലനം പരാജയപ്പെട്ടു. ദയവായി വീണ്ടും ശ്രമിക്കുക.' 
-              : 'Image analysis failed. Please try again.'
-          );
-        }
-        
-        if (textAnalysisResult.status === 'fulfilled') {
-          setTextResult(textAnalysisResult.value);
-          setCurrentContent(detectedText); // Display the extracted text in the result
-        } else {
-          toast.error(
-            language === 'ml' 
-              ? 'വാചക വിശകലനം പരാജയപ്പെട്ടു. ദയവായി വീണ്ടും ശ്രമിക്കുക.' 
-              : 'Text analysis failed. Please try again.'
-          );
-        }
-        
-        setActiveResultIndex(0); // Default to showing image result first
-        setIsAnalyzing(false);
-        return;
-      }
-      
-      // IMAGE ONLY CASE: Analyze image without text or extracted text is too short
-      if (imageContent && (!processedContent && detectedText.length <= 10)) {
-        try {
-          const imageBlob = dataURLtoBlob(imageContent);
-          const formData = new FormData();
-          formData.append('image', imageBlob, 'image.jpg');
-          
-          const response = await fetch('https://settling-presently-giraffe.ngrok-free.app/analyze', {
-            method: 'POST',
-            body: formData,
-            mode: 'cors',
-          });
-          
-          if (!response.ok) {
-            throw new Error(`Image analysis failed with status: ${response.status}`);
+
+            // If user provided text, analyze it
+            if (processedContent) {
+              try {
+                const textResult = await analyzeService.analyzeContent(processedContent, user?.id);
+                if (isTextAnalysisResult(textResult)) {
+                  setTextResult({
+                    ...textResult,
+                    type: 'text'
+                  });
+                }
+              } catch (error) {
+                console.error('Text analysis failed:', error);
+              }
+            }
+
+            // After analysis is complete, show text analysis first if it exists
+            setActiveResultIndex(textResult ? 0 : 1);
           }
-          
-          const imageAnalysisResult = await response.json();
-          console.log("Image-only analysis response:", imageAnalysisResult);
-          setImageResult(imageAnalysisResult);
-          setActiveResultIndex(0); // Default to showing image result for image-only input
         } catch (error) {
           console.error('Image analysis failed:', error);
           toast.error(
             language === 'ml' 
-              ? 'ചിത്ര വിശകലനം പരാജയപ്പെട്ടു. ദയവായി വീണ്ടും ശ്രമിക്കുക.' 
-              : 'Image analysis failed. Please try again.'
-          );
-        }
-        setIsAnalyzing(false);
-        return;
-      }
-      
-      // COMBINED CASE: Both image and text provided (user entered text or extracted from image)
-      if (imageContent && (processedContent || detectedText.length > 10)) {
-        // For combined analysis, we'll do both and enable swipe navigation
-        const textToAnalyze = processedContent || detectedText;
-        const imageBlob = dataURLtoBlob(imageContent);
-        const formData = new FormData();
-        formData.append('image', imageBlob, 'image.jpg');
-        formData.append('text', textToAnalyze); // Pass text to backend for context analysis
-        
-        console.log("Sending combined analysis request with:", {
-          imageSize: imageBlob.size,
-          text: textToAnalyze,
-          userProvidedText: !!processedContent,
-          extractedText: !!detectedText
-        });
-        
-        try {
-          // Run both analyses in parallel
-          const [imageAnalysisResult, textAnalysisResult] = await Promise.allSettled([
-            // Image analysis
-            fetch('https://settling-presently-giraffe.ngrok-free.app/analyze', {
-              method: 'POST',
-              body: formData,
-              mode: 'cors',
-            }).then(response => {
-              if (!response.ok) {
-                throw new Error(`Image analysis failed with status: ${response.status}`);
-              }
-              return response.json();
-            }),
-            // Text analysis
-            analyzeService.analyzeContent(textToAnalyze)
-          ]);
-          
-          if (imageAnalysisResult.status === 'fulfilled') {
-            setImageResult(imageAnalysisResult.value);
-          } else {
-            toast.error(
-              language === 'ml' 
-                ? 'ചിത്ര വിശകലനം പരാജയപ്പെട്ടു. ദയവായി വീണ്ടും ശ്രമിക്കുക.' 
-                : 'Image analysis failed. Please try again.'
-            );
-          }
-          
-          if (textAnalysisResult.status === 'fulfilled') {
-            setTextResult(textAnalysisResult.value);
-            // If we're using extracted text but user didn't provide any, set the current content
-            // to the extracted text for display in the result card
-            if (!processedContent && detectedText) {
-              setCurrentContent(detectedText);
-            }
-          } else {
-            toast.error(
-              language === 'ml' 
-                ? 'വാചക വിശകലനം പരാജയപ്പെട്ടു. ദയവായി വീണ്ടും ശ്രമിക്കുക.' 
-                : 'Text analysis failed. Please try again.'
-            );
-          }
-          
-          // Default to showing image result first for combined input
-          setActiveResultIndex(0);
-        } catch (error) {
-          console.error('Combined analysis failed:', error);
-          toast.error(
-            language === 'ml' 
-              ? 'വിശകലനം പരാജയപ്പെട്ടു. ദയവായി വീണ്ടും ശ്രമിക്കുക.' 
-              : 'Analysis failed. Please try again.'
+              ? 'ചിത്ര വിശകലനം പരാജയപ്പെട്ടു' 
+              : 'Image analysis failed'
           );
         }
       }
@@ -298,8 +150,8 @@ export function MainContent() {
       console.error('Analysis failed:', error);
       toast.error(
         language === 'ml' 
-          ? 'വിശകലനം പരാജയപ്പെട്ടു. ദയവായി വീണ്ടും ശ്രമിക്കുക.' 
-          : 'Analysis failed. Please try again.'
+          ? 'വിശകലനം പരാജയപ്പെട്ടു' 
+          : 'Analysis failed'
       );
     } finally {
       setIsAnalyzing(false);
@@ -321,12 +173,87 @@ export function MainContent() {
   const hasMultipleResults = imageResult && textResult;
 
   const navigateResults = (direction: 'next' | 'prev') => {
-    if (direction === 'next') {
-      setActiveResultIndex(1);
-    } else {
-      setActiveResultIndex(0);
+    const newIndex = direction === 'next' ? 1 : 0;
+    setActiveResultIndex(newIndex);
+    const ref = newIndex === 0 ? cardRefs.text : cardRefs.image;
+    ref.current?.focus();
+    announceCardChange(newIndex === 0 ? 'text' : 'image');
+  };
+
+  const announceCardChange = (type: 'image' | 'text') => {
+    const message = type === 'image'
+      ? (language === 'ml' ? 'ചിത്ര വിശകലനം കാണിക്കുന്നു' : 'Showing image analysis')
+      : (language === 'ml' ? 'വാചക വിശകലനം കാണിക്കുന്നു' : 'Showing text analysis');
+    
+    // Create and clean up aria live region
+    const announcement = document.createElement('div');
+    announcement.setAttribute('aria-live', 'polite');
+    announcement.setAttribute('class', 'sr-only');
+    announcement.textContent = message;
+    document.body.appendChild(announcement);
+    setTimeout(() => document.body.removeChild(announcement), 1000);
+  };
+
+  // Add a function to handle feedback submission
+  const handleFeedback = async (rating: number, comment?: string) => {
+    try {
+      // Get the relevant analysis result ID if available
+      const analysisResultId = textResult?.id || imageResult?.id || undefined;
+      
+      console.log('Submitting feedback with:', {
+        analysisResultId,
+        rating,
+        hasComment: !!comment,
+        hasUserId: !!user?.id
+      });
+      
+      // Submit the feedback using the feedback service
+      await feedbackService.submitFeedback({
+        rating,
+        comment: comment || undefined,
+        analysis_result_id: analysisResultId,
+        user_id: user?.id
+      });
+      
+      toast.success(
+        language === 'ml' 
+          ? 'നിങ്ങളുടെ പ്രതികരണത്തിന് നന്ദി!' 
+          : 'Thank you for your feedback!'
+      );
+      
+      return Promise.resolve();
+    } catch (error) {
+      console.error('Error submitting feedback:', error);
+      toast.error(
+        language === 'ml' 
+          ? 'പ്രതികരണം സമർപ്പിക്കുന്നതിൽ പിശക്' 
+          : 'Error submitting feedback'
+      );
+      return Promise.reject(error);
     }
   };
+
+  // Add keyboard navigation handler
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!hasMultipleResults) return;
+      
+      if (e.key === 'ArrowRight' && activeResultIndex === 0) {
+        e.preventDefault();
+        setActiveResultIndex(1);
+        cardRefs.image.current?.focus();
+        announceCardChange('image');
+      } else if (e.key === 'ArrowLeft' && activeResultIndex === 1) {
+        e.preventDefault();
+        setActiveResultIndex(0);
+        cardRefs.text.current?.focus();
+        announceCardChange('text');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [hasMultipleResults, activeResultIndex]);
 
   return (
     <div className="relative space-y-8 max-w-4xl mx-auto">
@@ -342,6 +269,41 @@ export function MainContent() {
           repeatType: 'reverse',
         }}
       />
+      {user?.id && (
+        <AnalysisHistory 
+          onSelectAnalysis={(analysis) => {
+            // Handle selecting a past analysis
+            if (analysis.type === 'text' || analysis.type === 'url') {
+              setTextResult({
+                ...analysis.result,
+                type: analysis.type,
+                id: analysis.id
+              });
+              setCurrentContent(analysis.input.text || analysis.input.url || '');
+            } else if (analysis.type === 'image' || analysis.type === 'text_image') {
+              setImageResult({
+                ...analysis.result,
+                type: analysis.type,
+                id: analysis.id
+              });
+              if (analysis.input.text) {
+                setCurrentContent(analysis.input.text);
+                setTextResult({
+                  ...analysis.result,
+                  type: 'text',
+                  id: analysis.id
+                });
+              }
+              // Handle image URL with type checking
+              if (typeof analysis.input.image_url === 'string') {
+                setCurrentImageContent(analysis.input.image_url);
+              } else {
+                setCurrentImageContent(null);
+              }
+            }
+          }} 
+        />
+      )}
       <InputSection onAnalyze={handleAnalyze} />
       
       <AnimatePresence mode="wait">
@@ -357,9 +319,9 @@ export function MainContent() {
                   content={currentContent}
                   extractedFromImage={false}
                 />
-                {/* Feedback Section */}
+                {/* Feedback Section - Add onFeedback prop */}
                 <div className="mt-12">
-                  <FeedbackSection />
+                  <FeedbackSection onFeedback={handleFeedback} />
                 </div>
               </div>
             )}
@@ -372,9 +334,9 @@ export function MainContent() {
                   imageUrl={currentImageContent} 
                   extractedText={extractedText}
                 />
-                {/* Feedback Section */}
+                {/* Feedback Section - Add onFeedback prop */}
                 <div className="mt-12">
-                  <FeedbackSection />
+                  <FeedbackSection onFeedback={handleFeedback} />
                 </div>
               </div>
             )}
@@ -383,84 +345,123 @@ export function MainContent() {
             {hasMultipleResults && (
               <div className="min-h-[600px] mb-24" tabIndex={0} 
                    aria-label={language === 'ml' ? 'വിശകലന ഫലങ്ങൾ' : 'Analysis Results'} 
-                   role="region">
+                   role="region"
+                   aria-live="polite"
+                   aria-roledescription={
+                     language === 'ml' 
+                       ? 'ഇടത്തേക്കും വലത്തേക്കും അമ്പ് കീകൾ ഉപയോഗിച്ച് ഫലങ്ങൾ മാറ്റുക' 
+                       : 'Use left and right arrow keys to switch between results'
+                   }>
                 <div className={clsx(
                   "transition-opacity duration-300",
                   activeResultIndex === 0 ? "opacity-100" : "opacity-0 hidden"
                 )}>
-                  <ImageResultCard 
-                    result={imageResult} 
-                    imageUrl={currentImageContent} 
-                    extractedText={extractedText}
-                  />
+                  <div
+                    ref={cardRefs.text}
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'ArrowRight') {
+                        e.preventDefault();
+                        navigateResults('next');
+                      }
+                    }}
+                    className="outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 rounded-lg"
+                  >
+                    <ResultCard 
+                      result={textResult} 
+                      content={currentContent}
+                      extractedFromImage={!!extractedText && !currentContent}
+                    />
+                  </div>
                 </div>
                 
                 <div className={clsx(
                   "transition-opacity duration-300",
                   activeResultIndex === 1 ? "opacity-100" : "opacity-0 hidden"
                 )}>
-                  <ResultCard 
-                    result={textResult} 
-                    content={currentContent}
-                    extractedFromImage={!!extractedText && !currentContent}
-                  />
+                  <div
+                    ref={cardRefs.image}
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'ArrowLeft') {
+                        e.preventDefault();
+                        navigateResults('prev');
+                      }
+                    }}
+                    className="outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 rounded-lg"
+                  >
+                    <ImageResultCard 
+                      result={imageResult} 
+                      imageUrl={currentImageContent} 
+                      extractedText={extractedText}
+                    />
+                  </div>
                 </div>
 
                 {/* Navigation Controls */}
-                <div className="flex justify-center items-center mt-8 space-x-4">
-                  <button
-                    onClick={() => navigateResults('prev')}
-                    disabled={activeResultIndex === 0}
-                    className={`p-2 rounded-full flex items-center justify-center ${
-                      activeResultIndex === 0 
-                        ? 'text-gray-400 cursor-not-allowed' 
-                        : 'text-blue-500 hover:bg-blue-50'
-                    }`}
-                    aria-label={language === 'ml' ? 'മുൻപത്തെ ഫലം' : 'Previous result'}
-                  >
-                    <ChevronLeft className="w-6 h-6" />
-                  </button>
-                  
-                  <div className="flex space-x-3">
+                <div className="flex flex-col items-center mt-8 space-y-4">
+                  <div className="flex justify-center items-center space-x-4">
                     <button
-                      onClick={() => setActiveResultIndex(0)}
-                      className={`w-3 h-3 rounded-full transition-colors ${
+                      onClick={() => navigateResults('prev')}
+                      disabled={activeResultIndex === 0}
+                      className={`p-2 rounded-full flex items-center justify-center ${
                         activeResultIndex === 0 
-                          ? 'bg-blue-500' 
-                          : 'bg-gray-300 hover:bg-blue-200'
+                          ? 'text-gray-400 cursor-not-allowed' 
+                          : 'text-blue-500 hover:bg-blue-50'
                       }`}
-                      aria-label={language === 'ml' ? 'ചിത്ര വിശകലനം കാണിക്കുക' : 'Show image analysis'}
-                      aria-pressed={activeResultIndex === 0}
-                    />
+                      aria-label={language === 'ml' ? 'മുൻപത്തെ ഫലം' : 'Previous result'}
+                    >
+                      <ChevronLeft className="w-6 h-6" />
+                    </button>
+                    
+                    <div className="flex space-x-3">
+                      <button
+                        onClick={() => setActiveResultIndex(0)}
+                        className={`w-3 h-3 rounded-full transition-colors ${
+                          activeResultIndex === 0 
+                            ? 'bg-blue-500' 
+                            : 'bg-gray-300 hover:bg-blue-200'
+                        }`}
+                        aria-label={language === 'ml' ? 'വാചക വിശകലനം കാണിക്കുക' : 'Show text analysis'}
+                        aria-pressed={activeResultIndex === 0}
+                      />
+                      <button
+                        onClick={() => setActiveResultIndex(1)}
+                        className={`w-3 h-3 rounded-full transition-colors ${
+                          activeResultIndex === 1 
+                            ? 'bg-blue-500' 
+                            : 'bg-gray-300 hover:bg-blue-200'
+                        }`}
+                        aria-label={language === 'ml' ? 'ചിത്ര വിശകലനം കാണിക്കുക' : 'Show image analysis'}
+                        aria-pressed={activeResultIndex === 1}
+                      />
+                    </div>
+                    
                     <button
-                      onClick={() => setActiveResultIndex(1)}
-                      className={`w-3 h-3 rounded-full transition-colors ${
+                      onClick={() => navigateResults('next')}
+                      disabled={activeResultIndex === 1}
+                      className={`p-2 rounded-full flex items-center justify-center ${
                         activeResultIndex === 1 
-                          ? 'bg-blue-500' 
-                          : 'bg-gray-300 hover:bg-blue-200'
+                          ? 'text-gray-400 cursor-not-allowed' 
+                          : 'text-blue-500 hover:bg-blue-50'
                       }`}
-                      aria-label={language === 'ml' ? 'വാചക വിശകലനം കാണിക്കുക' : 'Show text analysis'}
-                      aria-pressed={activeResultIndex === 1}
-                    />
+                      aria-label={language === 'ml' ? 'അടുത്ത ഫലം' : 'Next result'}
+                    >
+                      <ChevronRight className="w-6 h-6" />
+                    </button>
                   </div>
                   
-                  <button
-                    onClick={() => navigateResults('next')}
-                    disabled={activeResultIndex === 1}
-                    className={`p-2 rounded-full flex items-center justify-center ${
-                      activeResultIndex === 1 
-                        ? 'text-gray-400 cursor-not-allowed' 
-                        : 'text-blue-500 hover:bg-blue-50'
-                    }`}
-                    aria-label={language === 'ml' ? 'അടുത്ത ഫലം' : 'Next result'}
-                  >
-                    <ChevronRight className="w-6 h-6" />
-                  </button>
+                  {/* Keyboard Navigation Hint */}
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    {language === 'ml' 
+                      ? 'ഇടത്തേക്കും വലത്തേക്കും അമ്പ് കീകൾ ഉപയോഗിച്ച് മാറുക ↔️'
+                      : 'Use left and right arrow keys to switch ↔️'}
+                  </p>
                 </div>
                 
-                {/* Feedback Section */}
+                {/* Feedback Section - Add onFeedback prop */}
                 <div className="mt-12">
-                  <FeedbackSection />
+                  <FeedbackSection onFeedback={handleFeedback} />
                 </div>
               </div>
             )}

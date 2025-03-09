@@ -31,6 +31,7 @@ export interface Indicator {
 }
 
 export interface AnalysisResult {
+  id?: string;
   ISFAKE: number;
   CONFIDENCE: number;
   EXPLANATION_EN: string;
@@ -57,3 +58,15 @@ export type AnalysisIndicator = {
 export interface AnalysisRequest {
   query: string;
 }
+
+export interface HistoryItem {
+  id: string;
+  type: string;
+  input: any;
+  result: any;
+  created_at: string;
+}
+
+export * from './analysis';
+export * from './trending';
+export * from './supabase';

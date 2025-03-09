@@ -1,39 +1,42 @@
-export interface TextAnalysisResult {
-  isReliable: boolean;
-  confidence: number;
-  analysis: string;
-  indicators: Array<{
-    id: string;
-    score: number;
-  }>;
+export interface BaseAnalysisResult {
+  id?: string;
+  type: 'text' | 'image' | 'url' | 'text_image';
+  created_at?: string;
+  updated_at?: string;
 }
 
-export interface ImageAnalysisResponse {
+export interface TextAnalysisResult extends BaseAnalysisResult {
+  type: 'text' | 'url';
+  ISFAKE: number;
+  CONFIDENCE: number;
+  EXPLANATION_EN: string;
+  EXPLANATION_ML: string;
+}
+
+export interface ImageAnalysisResult extends BaseAnalysisResult {
+  type: 'image' | 'text_image';
   verdict: string;
   score: number;
   details: {
     ai_generated: boolean;
-    deepfake: boolean;
-    tampering_analysis: {
-      tampered: boolean;
-      confidence: number;
-      regions?: Array<{
-        x: number;
-        y: number;
-        width: number;
-        height: number;
-      }>;
-    };
-    image_caption: string;
     reverse_search: {
-      matches: Array<{
-        url: string;
-        title: string;
-        similarity: number;
-      }>;
+      found: boolean;
+      matches?: any[];
+    };
+    deepfake: boolean;
+    tampering_analysis: boolean;
+    image_caption: string;
+    text_analysis?: {
+      user_text: string;
+      extracted_text: string;
+      mismatch: boolean;
+      context_similarity: number;
+      context_mismatch: boolean;
     };
   };
 }
+
+export type AnalysisResult = TextAnalysisResult | ImageAnalysisResult;
 
 export type InputType = 'text' | 'url' | 'image';
 
@@ -42,5 +45,3 @@ export interface AnalysisInput {
   image?: File;
   type: InputType;
 }
-
-export type AnalysisResult = TextAnalysisResult | ImageAnalysisResponse;

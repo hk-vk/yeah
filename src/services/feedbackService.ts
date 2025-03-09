@@ -1,32 +1,45 @@
 import { supabase } from '../lib/supabase';
-import { toast } from 'react-hot-toast';
 
 export interface FeedbackData {
-  feedback_text: string;
+  rating: number;
+  comment?: string;
+  feedback_text?: string;
   user_id?: string;
   analysis_id?: string;
+  analysis_result_id?: string;
 }
 
 export const feedbackService = {
   async submitFeedback(data: FeedbackData) {
     try {
-      const { data: feedbackData, error } = await supabase
-        .from('feedback')
-        .insert([
-          {
-            feedback_text: data.feedback_text,
-            user_id: data.user_id,
-            analysis_id: data.analysis_id,
-            created_at: new Date().toISOString()
-          }
-        ])
-        .select();
+      console.log('Submitting feedback:', {
+        rating: data.rating,
+        hasComment: !!data.comment,
+        hasUserId: !!data.user_id,
+        hasAnalysisResultId: !!data.analysis_result_id
+      });
+      
+      // Prepare the data - use only fields that exist in the feedback table
+      const feedbackData = {
+        rating: data.rating,
+        comment: data.comment || data.feedback_text,
+        user_id: data.user_id,
+        analysis_result_id: data.analysis_result_id || data.analysis_id, // Support both field names
+        created_at: new Date().toISOString()
+      };
 
-      if (error) throw error;
-      toast.success('Feedback submitted successfully!');
-      return feedbackData;
+      const { error } = await supabase
+        .from('feedback')
+        .insert([feedbackData]);
+
+      if (error) {
+        console.error('Supabase error when submitting feedback:', error);
+        throw error;
+      }
+
+      return true;
     } catch (error: any) {
-      toast.error(error.message || 'Failed to submit feedback');
+      console.error('Exception when submitting feedback:', error);
       throw error;
     }
   },
@@ -38,11 +51,15 @@ export const feedbackService = {
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching feedback:', error);
+        throw error;
+      }
+      
       return data;
     } catch (error: any) {
-      toast.error(error.message || 'Failed to fetch feedback');
+      console.error('Error fetching feedback:', error);
       throw error;
     }
   }
-}
+};

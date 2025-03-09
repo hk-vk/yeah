@@ -44,12 +44,17 @@ export const translations = {
     searchCount: 'തിരയൽ എണ്ണം',
     noTrendingData: 'ട്രെൻഡിംഗ് ഡാറ്റ ഇല്ല',
     trendingTitle: 'ട്രെൻഡിംഗ് വാർത്തകൾ',
+    trendingDescription: 'ഏറ്റവും കൂടുതൽ പരിശോധിക്കപ്പെട്ട വാർത്തകളും അവയുടെ വിശ്വസനീയതയും',
+    searchInTrending: 'ട്രെൻഡിംഗ് വാർത്തകളിൽ തിരയുക',
     // Writing Style Analysis translations
     writingStyleAnalysis: 'എഴുത്ത് ശൈലി വിശകലനം',
     sensationalismScore: 'അതിശയോക്തി സ്കോർ',
     writingStyleScore: 'എഴുത്ത് ഗുണനിലവാരം',
     clickbaitScore: 'ക്ലിക്ക്ബൈറ്റ് സ്കോർ',
-    highSensationalism: 'ഉയർന്ന അതിശയോക്തി കണ്ടെത്തി'
+    highSensationalism: 'ഉയർന്ന അതിശയോക്തി കണ്ടെത്തി',
+    // Analysis History translations
+    analysisHistory: 'വിശകലന ചരിത്രം',
+    noAnalysisHistory: 'വിശകലന ചരിത്രം ലഭ്യമല്ല'
   },
   en: {
     title: 'YEAH!',
@@ -96,11 +101,16 @@ export const translations = {
     searchCount: 'Search Count',
     noTrendingData: 'No trending data',
     trendingTitle: 'Trending News',
+    trendingDescription: 'Most verified news stories and their reliability status',
+    searchInTrending: 'Search in trending news',
     // Writing Style Analysis translations
     writingStyleAnalysis: 'Writing Style Analysis',
     sensationalismScore: 'Sensationalism Score',
     writingStyleScore: 'Writing Quality',
     clickbaitScore: 'Clickbait Score',
-    highSensationalism: 'High sensationalism detected'
+    highSensationalism: 'High sensationalism detected',
+    // Analysis History translations
+    analysisHistory: 'Analysis History',
+    noAnalysisHistory: 'No analysis history found'
   }
 };

@@ -15,6 +15,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         setUser(user);
+        
+        // Store user ID in localStorage if available
+        if (user?.id) {
+          localStorage.setItem('userId', user.id);
+          console.log('User ID stored in localStorage:', user.id);
+        }
       } catch (error) {
         console.error('Error checking auth session:', error);
       } finally {
@@ -25,7 +31,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initializeAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      setUser(session?.user ?? null);
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
+      
+      // Update localStorage based on auth state
+      if (currentUser?.id) {
+        localStorage.setItem('userId', currentUser.id);
+        console.log('User ID updated in localStorage:', currentUser.id);
+      } else {
+        localStorage.removeItem('userId');
+        console.log('User ID removed from localStorage');
+      }
+      
       setLoading(false);
     });
 
@@ -46,6 +63,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error) throw error;
       if (user) {
         setUser(user);
+        
+        // Store user ID in localStorage
+        localStorage.setItem('userId', user.id);
+        console.log('User ID stored in localStorage after login:', user.id);
+        
         toast.success('Successfully logged in!');
       }
     } catch (error: any) {
@@ -82,6 +104,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
     }
   };
+  
 
   const signOut = async () => {
     try {
@@ -90,6 +113,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
       setUser(null);
+      
+      // Remove user ID from localStorage
+      localStorage.removeItem('userId');
+      console.log('User ID removed from localStorage after logout');
+      
       toast.success('Successfully logged out!');
     } catch (error: any) {
       setError(error.message || 'Logout failed');

@@ -1,5 +1,7 @@
 import { API_CONFIG } from '../config';
-import { AnalysisResult, WritingStyleResult } from '../types';
+import type { AnalysisResult, TextAnalysisResult, ImageAnalysisResult } from '../types/analysis';
+import { SupabaseService } from './supabaseService';
+import type { AnalysisType } from '../types/supabase';
 
 // Create a persistent connection manager
 class ConnectionManager {
@@ -60,8 +62,22 @@ class ConnectionManager {
 // Initialize connection manager
 const connectionManager = ConnectionManager.getInstance();
 
+// Helper function to save analysis to Supabase
+const saveAnalysisToSupabase = async (type: AnalysisType, input: any, result: any, userId?: string) => {
+    console.log('saveAnalysisToSupabase called with userId:', userId);
+    
+    try {
+        const savedAnalysis = await SupabaseService.saveAnalysis(type, input, result, userId);
+        return savedAnalysis;
+    } catch (error) {
+        console.error('Error in saveAnalysisToSupabase:', error);
+        // Return a mock ID if saving fails
+        return { id: `local-${Date.now()}` };
+    }
+};
+
 export const analyzeService = {
-    async analyzeContent(content: string): Promise<AnalysisResult> {
+    async analyzeContent(content: string, userId?: string): Promise<TextAnalysisResult> {
         try {
             const response = await connectionManager.fetch(
                 `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.REVERSE_SEARCH}`,
@@ -74,29 +90,149 @@ export const analyzeService = {
                 }
             );
 
-            return await response.json();
+            const result = await response.json();
+
+            // Save analysis to Supabase and wait for it to complete
+            try {
+                const savedAnalysis = await saveAnalysisToSupabase(
+                    'text',
+                    { text: content },
+                    result,
+                    userId
+                );
+                return {
+                    ...result,
+                    id: savedAnalysis.id,
+                    type: 'text'
+                };
+            } catch (error) {
+                console.error('Error saving text analysis:', error);
+                return {
+                    ...result,
+                    id: `local-${Date.now()}`,
+                    type: 'text'
+                };
+            }
         } catch (error) {
             console.error('Error during content analysis:', error);
             throw error;
         }
     },
 
-    async analyzeWritingStyle(content: string): Promise<WritingStyleResult> {
+    async analyzeImage(
+        imageUrl: string,
+        text?: string,
+        userId?: string
+    ): Promise<ImageAnalysisResult> {
+        try {
+            // Convert data URL to blob if needed
+            let imageBlob;
+            if (imageUrl.startsWith('data:')) {
+                imageBlob = dataURLtoBlob(imageUrl);
+            }
+
+            const formData = new FormData();
+            formData.append('image', imageBlob || imageUrl);
+            if (text) {
+                formData.append('text', text);
+            }
+
+            const response = await fetch('https://settling-presently-giraffe.ngrok-free.app/analyze', {
+                method: 'POST',
+                body: formData,
+                mode: 'cors',
+            });
+
+            if (!response.ok) {
+                throw new Error(`Image analysis failed with status: ${response.status}`);
+            }
+
+            const result = await response.json();
+
+            // Save analysis to Supabase and wait for it to complete
+            try {
+                const savedAnalysis = await saveAnalysisToSupabase(
+                    text ? 'text_image' : 'image',
+                    {
+                        image_url: 'image_processed', // Don't store the actual data URL
+                        text: text,
+                    },
+                    result,
+                    userId
+                );
+                return {
+                    ...result,
+                    id: savedAnalysis.id,
+                    type: text ? 'text_image' : 'image'
+                };
+            } catch (error) {
+                console.error('Error saving image analysis:', error);
+                return {
+                    ...result,
+                    id: `local-${Date.now()}`,
+                    type: text ? 'text_image' : 'image'
+                };
+            }
+        } catch (error) {
+            console.error('Error during image analysis:', error);
+            throw error;
+        }
+    },
+
+    async analyzeUrl(url: string, userId?: string): Promise<TextAnalysisResult> {
         try {
             const response = await connectionManager.fetch(
-                `${API_CONFIG.BASE_URL}/api/writing-style`,
+                `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.URL_ANALYSIS}`,
                 {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ content }),
+                    body: JSON.stringify({ url }),
                 }
             );
 
-            return await response.json();
+            const result = await response.json();
+
+            // Save analysis to Supabase and wait for it to complete
+            try {
+                const savedAnalysis = await saveAnalysisToSupabase(
+                    'url',
+                    { url },
+                    result,
+                    userId
+                );
+                return {
+                    ...result,
+                    id: savedAnalysis.id,
+                    type: 'url'
+                };
+            } catch (error) {
+                console.error('Error saving URL analysis:', error);
+                return {
+                    ...result,
+                    id: `local-${Date.now()}`,
+                    type: 'url'
+                };
+            }
         } catch (error) {
-            console.error('Error during writing style analysis:', error);
+            console.error('Error during URL analysis:', error);
+            throw error;
+        }
+    },
+
+    async saveFeedback(analysisId: string, rating: number, comment?: string, userId?: string) {
+        console.log('analyzeService.saveFeedback called with:', {
+            analysisId,
+            rating,
+            hasComment: !!comment,
+            hasUserId: !!userId
+        });
+        
+        try {
+            return await SupabaseService.saveFeedback(analysisId, rating, comment, userId);
+        } catch (error) {
+            console.error('Error saving feedback:', error);
             throw error;
         }
     },
@@ -120,6 +256,19 @@ export const analyzeService = {
             throw error;
         }
     }
+};
+
+// Helper function to convert data URL to Blob
+const dataURLtoBlob = (dataURL: string): Blob => {
+    const arr = dataURL.split(',');
+    const mime = arr[0].match(/:(.*?);/)![1];
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+        u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new Blob([u8arr], { type: mime });
 };
 
 // Add cleanup on window unload

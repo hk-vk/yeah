@@ -1,7 +1,7 @@
 import { FC, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { ShieldCheck, ShieldAlert, FileText, AlertTriangle, TrendingUp, ChevronLeft, Search, Globe, ChevronDown, ChevronUp } from 'lucide-react';
-import { AnalysisResult, WritingStyleResult } from '../types';
+import { ShieldCheck, ShieldAlert, FileText, AlertTriangle, TrendingUp, Search, Globe, ChevronDown, ChevronUp, ChevronRight } from 'lucide-react';
+import { AnalysisResult } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
 import { translations } from '../locales/translations';
 import { GlassCard } from './common/GlassCard';
@@ -22,25 +22,12 @@ export const ResultCard: FC<ResultCardProps> = ({
 }) => {
   const { language } = useLanguage();
   const t = translations[language];
-  const [writingStyle, setWritingStyle] = useState<WritingStyleResult | null>(null);
   const [reverseSearchResults, setReverseSearchResults] = useState<any[] | null>(null);
   const [expandedMatches, setExpandedMatches] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const isMalayalam = language === 'ml';
 
   useEffect(() => {
-    const fetchWritingStyle = async () => {
-      if (content) {
-        try {
-          const styleResult = await analyzeService.analyzeWritingStyle(content);
-          setWritingStyle(styleResult);
-        } catch (error) {
-          console.error('Writing style analysis failed:', error);
-        }
-      }
-    };
-    fetchWritingStyle();
-    
     // If text was extracted from image, perform a reverse search
     const performReverseSearch = async () => {
       if (extractedFromImage && content && content.length > 10) {
@@ -57,29 +44,9 @@ export const ResultCard: FC<ResultCardProps> = ({
         }
       }
     };
+    
     performReverseSearch();
   }, [content, extractedFromImage]);
-
-  const styleIndicators = writingStyle ? [
-    {
-      id: 'sensationalism',
-      score: Math.round(writingStyle.sensationalism),
-      title: t.sensationalismScore
-    },
-    {
-      id: 'writingStyle',
-      score: Math.round(writingStyle.writingStyle),
-      title: t.writingStyleScore
-    },
-    {
-      id: 'clickbait',
-      score: Math.round(writingStyle.clickbait),
-      title: t.clickbaitScore
-    }
-  ] : [];
-
-  const confidencePercentage = Math.round(result.CONFIDENCE * 100);
-  const explanation = language === 'ml' ? result.EXPLANATION_ML : result.EXPLANATION_EN;
 
   const renderReverseSearchResults = () => {
     if (isSearching) {
@@ -153,17 +120,17 @@ export const ResultCard: FC<ResultCardProps> = ({
       animate={{ opacity: 1, scale: 1 }}
       className="w-full max-w-2xl mx-auto relative space-y-4"
     >
-      {/* Swipe Indicator */}
+      {/* Swipe Indicator - Updated to point to image analysis */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 1 }}
-        className="absolute -left-4 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-600 hidden md:flex items-center"
+        className="absolute -right-4 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-600 hidden md:flex items-center"
       >
-        <ChevronLeft className="w-4 h-4" />
-        <span className="text-sm ml-2">
+        <span className="text-sm mr-2">
           {language === 'ml' ? 'ചിത്ര വിശകലനം' : 'Image Analysis'}
         </span>
+        <ChevronRight className="w-4 h-4" />
       </motion.div>
 
       <div className="absolute top-4 right-4 z-10">
@@ -245,7 +212,7 @@ export const ResultCard: FC<ResultCardProps> = ({
               "text-gray-600 dark:text-gray-300",
               isMalayalam && "text-lg leading-loose"
             )}>
-              {explanation}
+              {result.EXPLANATION_EN}
             </p>
           </div>
 
@@ -263,33 +230,6 @@ export const ResultCard: FC<ResultCardProps> = ({
             </div>
           )}
 
-          {/* Writing Style Analysis */}
-          {writingStyle && (
-            <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
-              <h3 className={clsx(
-                "text-lg font-semibold mb-4 text-gray-800 dark:text-gray-100 flex items-center",
-                isMalayalam && "text-xl leading-relaxed"
-              )}>
-                <TrendingUp className="w-5 h-5 mr-2" />
-                {t.writingStyleAnalysis}
-              </h3>
-              <div className="space-y-4">
-                {styleIndicators.map((indicator) => (
-                  <AnalysisIndicator key={indicator.id} indicator={indicator} />
-                ))}
-              </div>
-              {writingStyle.sensationalism > 70 && (
-                <div className={clsx(
-                  "mt-4 flex items-center text-amber-500",
-                  isMalayalam && "text-lg"
-                )}>
-                  <AlertTriangle className="w-4 h-4 mr-1" />
-                  <span>{t.highSensationalism}</span>
-                </div>
-              )}
-            </div>
-          )}
-
           {/* Confidence Score */}
           <div className="text-sm text-center">
             <motion.div
@@ -301,7 +241,7 @@ export const ResultCard: FC<ResultCardProps> = ({
                 isMalayalam && "text-base"
               )}>
               <span className="text-blue-700 dark:text-blue-300">
-                {t.confidenceScore}: {confidencePercentage}%
+                {t.confidenceScore}: {Math.round(result.CONFIDENCE * 100)}%
               </span>
             </motion.div>
           </div>

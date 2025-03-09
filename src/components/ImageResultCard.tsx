@@ -1,9 +1,9 @@
-import React, { FC, useState } from 'react';
+import { FC, useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
-  ShieldCheck, ShieldAlert, FileText, Image as ImageIcon, 
-  Search, Cpu, Camera, Scissors, AlertTriangle, ChevronDown, ChevronUp,
-  Check, X, Info, Globe, ChevronRight, Calendar
+  Check, X, Globe, ChevronLeft, Calendar, ShieldCheck, ShieldAlert,
+  Image as ImageIcon, ChevronUp, ChevronDown, AlertTriangle, Cpu,
+  Camera, Scissors, Search, FileText
 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { GlassCard } from './common/GlassCard';
@@ -342,8 +342,7 @@ export const ImageResultCard: FC<ImageResultCardProps> = ({ result, imageUrl, ex
                   className={clsx(
                     "px-2 py-1 rounded-md text-xs",
                     "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200"
-                  )}
-                >
+                  )}>
                   {formatDate(date)}
                 </span>
               ))}
@@ -363,8 +362,7 @@ export const ImageResultCard: FC<ImageResultCardProps> = ({ result, imageUrl, ex
                   className={clsx(
                     "px-2 py-1 rounded-md text-xs",
                     "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-200"
-                  )}
-                >
+                  )}>
                   {formatDate(date)}
                 </span>
               ))}
@@ -433,12 +431,12 @@ export const ImageResultCard: FC<ImageResultCardProps> = ({ result, imageUrl, ex
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 1 }}
-        className="absolute -right-4 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-600 hidden md:flex items-center"
+        className="absolute -left-4 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-600 hidden md:flex items-center"
       >
-        <span className="text-sm mr-2">
+        <ChevronLeft className="w-4 h-4 mr-2" />
+        <span className="text-sm">
           {language === 'ml' ? 'വാചക വിശകലനം' : 'Text Analysis'}
         </span>
-        <ChevronRight className="w-4 h-4" />
       </motion.div>
 
       <div className="absolute top-4 right-4 z-10">
@@ -507,8 +505,8 @@ export const ImageResultCard: FC<ImageResultCardProps> = ({ result, imageUrl, ex
               </span>
               <span className={clsx(
                 "font-medium",
-                isMalayalam ? "text-base" : "text-sm",
                 isReliable ? "text-green-600" : "text-amber-600",
+                isMalayalam ? "text-base" : "text-sm"
               )}>
                 {confidencePercentage}%
               </span>
