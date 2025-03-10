@@ -255,7 +255,31 @@ export const analyzeService = {
             console.error('Error performing reverse search:', error);
             throw error;
         }
-    }
+    },
+
+    async analyzeWritingStyle(content: string): Promise<any> {
+        try {
+            const response = await connectionManager.fetch(
+                `${API_CONFIG.BASE_URL}/api/writing-style`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ content }),
+                }
+            );
+
+            if (!response.ok) {
+                throw new Error(`Writing style analysis failed with status: ${response.status}`);
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('Error during writing style analysis:', error);
+            throw error;
+        }
+    },
 };
 
 // Helper function to convert data URL to Blob

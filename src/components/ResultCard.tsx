@@ -1,7 +1,7 @@
 import { FC, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { ShieldCheck, ShieldAlert, FileText, AlertTriangle, TrendingUp, Search, Globe, ChevronDown, ChevronUp, ChevronRight } from 'lucide-react';
-import { AnalysisResult } from '../types';
+import { AnalysisResult, WritingStyleResult } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
 import { translations } from '../locales/translations';
 import { GlassCard } from './common/GlassCard';
@@ -25,6 +25,7 @@ export const ResultCard: FC<ResultCardProps> = ({
   const [reverseSearchResults, setReverseSearchResults] = useState<any[] | null>(null);
   const [expandedMatches, setExpandedMatches] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
+  const [writingStyle, setWritingStyle] = useState<WritingStyleResult | null>(null);
   const isMalayalam = language === 'ml';
 
   useEffect(() => {
@@ -45,7 +46,20 @@ export const ResultCard: FC<ResultCardProps> = ({
       }
     };
     
+    // Analyze writing style if content is available
+    const analyzeWritingStyle = async () => {
+      if (content && content.length > 20) {
+        try {
+          const styleResult = await analyzeService.analyzeWritingStyle(content);
+          setWritingStyle(styleResult);
+        } catch (error) {
+          console.error('Writing style analysis failed:', error);
+        }
+      }
+    };
+    
     performReverseSearch();
+    analyzeWritingStyle();
   }, [content, extractedFromImage]);
 
   const renderReverseSearchResults = () => {
@@ -202,19 +216,136 @@ export const ResultCard: FC<ResultCardProps> = ({
           {/* Explanation */}
           <div className="mb-6">
             <h3 className={clsx(
-              "text-lg font-semibold mb-2 text-gray-800 dark:text-gray-100 flex items-center",
+              "text-lg font-semibold mb-4 text-gray-800 dark:text-gray-100 flex items-center",
               isMalayalam && "text-xl leading-relaxed"
             )}>
               <FileText className="w-5 h-5 mr-2" />
               {t.analysisTitle}
             </h3>
-            <p className={clsx(
-              "text-gray-600 dark:text-gray-300",
-              isMalayalam && "text-lg leading-loose"
-            )}>
-              {result.EXPLANATION_EN}
-            </p>
+            
+            {/* Display explanation only in the user's selected language */}
+            <div className="p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm">
+              <p className={clsx(
+                "text-gray-700 dark:text-gray-300",
+                isMalayalam && "malayalam-text text-lg leading-loose"
+              )}>
+                {isMalayalam ? result.EXPLANATION_ML : result.EXPLANATION_EN}
+              </p>
+            </div>
           </div>
+
+          {/* Writing Style Analysis */}
+          {writingStyle && content && content.length > 20 && (
+            <div className="mb-8">
+              <h3 className={clsx(
+                "text-lg font-semibold mb-5 text-gray-800 dark:text-gray-100 flex items-center",
+                isMalayalam && "text-xl leading-relaxed"
+              )}>
+                <TrendingUp className="w-5 h-5 mr-2.5" />
+                {t.writingStyleAnalysis}
+              </h3>
+              
+              <div className="space-y-5 p-5 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-100/50 dark:border-gray-700/50 shadow-lg">
+                {/* Sensationalism Score */}
+                <div>
+                  <div className="flex justify-between mb-2">
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                      {t.sensationalismScore}
+                    </span>
+                    <span className={clsx(
+                      "text-sm font-medium",
+                      Math.round(writingStyle.sensationalism) > 70 
+                        ? "text-red-500 dark:text-red-400"
+                        : "text-gray-700 dark:text-gray-200"
+                    )}>
+                      {Math.round(writingStyle.sensationalism)}%
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-100 dark:bg-gray-700/50 rounded-full h-2.5 shadow-inner">
+                    <div 
+                      className={clsx(
+                        "h-2.5 rounded-full shadow-sm transition-all duration-500 ease-out",
+                        writingStyle.sensationalism > 70 
+                          ? "bg-red-500" 
+                          : writingStyle.sensationalism > 40 
+                            ? "bg-yellow-500" 
+                            : "bg-green-500"
+                      )}
+                      style={{ width: `${Math.round(writingStyle.sensationalism)}%` }}
+                    ></div>
+                  </div>
+                </div>
+                
+                {/* Writing Quality Score */}
+                <div>
+                  <div className="flex justify-between mb-2">
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                      {t.writingStyleScore}
+                    </span>
+                    <span className={clsx(
+                      "text-sm font-medium",
+                      Math.round(writingStyle.writingStyle) > 70 
+                        ? "text-green-500 dark:text-green-400"
+                        : "text-gray-700 dark:text-gray-200"
+                    )}>
+                      {Math.round(writingStyle.writingStyle)}%
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-100 dark:bg-gray-700/50 rounded-full h-2.5 shadow-inner">
+                    <div 
+                      className={clsx(
+                        "h-2.5 rounded-full shadow-sm transition-all duration-500 ease-out",
+                        writingStyle.writingStyle > 70 
+                          ? "bg-green-500" 
+                          : writingStyle.writingStyle > 40 
+                            ? "bg-yellow-500" 
+                            : "bg-red-500"
+                      )}
+                      style={{ width: `${Math.round(writingStyle.writingStyle)}%` }}
+                    ></div>
+                  </div>
+                </div>
+                
+                {/* Clickbait Score */}
+                <div>
+                  <div className="flex justify-between mb-2">
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                      {t.clickbaitScore}
+                    </span>
+                    <span className={clsx(
+                      "text-sm font-medium",
+                      Math.round(writingStyle.clickbait) > 70 
+                        ? "text-red-500 dark:text-red-400"
+                        : "text-gray-700 dark:text-gray-200"
+                    )}>
+                      {Math.round(writingStyle.clickbait)}%
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-100 dark:bg-gray-700/50 rounded-full h-2.5 shadow-inner">
+                    <div 
+                      className={clsx(
+                        "h-2.5 rounded-full shadow-sm transition-all duration-500 ease-out",
+                        writingStyle.clickbait > 70 
+                          ? "bg-red-500" 
+                          : writingStyle.clickbait > 40 
+                            ? "bg-yellow-500" 
+                            : "bg-green-500"
+                      )}
+                      style={{ width: `${Math.round(writingStyle.clickbait)}%` }}
+                    ></div>
+                  </div>
+                </div>
+                
+                {/* Warning for high sensationalism */}
+                {writingStyle.sensationalism > 70 && (
+                  <div className="flex items-center text-amber-500 dark:text-amber-400 mt-4 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-100 dark:border-amber-800/30">
+                    <AlertTriangle className="w-4 h-4 mr-2.5 flex-shrink-0" />
+                    <span className="text-sm">{t.highSensationalism}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Reverse Search Results for Extracted Text */}
           {extractedFromImage && (
