@@ -1,5 +1,6 @@
 import { API_CONFIG } from '../config';
 import type { AnalysisResult, TextAnalysisResult, ImageAnalysisResult } from '../types/analysis';
+import type { WritingStyleResult } from '../types';
 import { SupabaseService } from './supabaseService';
 import type { AnalysisType } from '../types/supabase';
 
@@ -257,10 +258,10 @@ export const analyzeService = {
         }
     },
 
-    async analyzeWritingStyle(content: string): Promise<any> {
+    async analyzeWritingStyle(content: string): Promise<WritingStyleResult> {
         try {
             const response = await connectionManager.fetch(
-                `${API_CONFIG.BASE_URL}/api/writing-style`,
+                `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.WRITING_STYLE}`,
                 {
                     method: 'POST',
                     headers: {
@@ -274,7 +275,12 @@ export const analyzeService = {
                 throw new Error(`Writing style analysis failed with status: ${response.status}`);
             }
 
-            return await response.json();
+            const result = await response.json();
+            return {
+                sensationalism: result.sensationalism || 0,
+                writingStyle: result.writingStyle || 0,
+                clickbait: result.clickbait || 0
+            };
         } catch (error) {
             console.error('Error during writing style analysis:', error);
             throw error;

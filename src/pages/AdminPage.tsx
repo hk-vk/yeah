@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Users, BarChart2, MessageSquare } from 'lucide-react';
+import { Users, BarChart2, MessageSquare, Globe, Plus, Edit, Trash2, Star, AlertCircle, Check, X, Pencil, Save } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { translations } from '../locales/translations';
 import { Card } from '../components/common/Card';
@@ -8,6 +8,10 @@ import { StatsCard } from '../components/admin/StatsCard';
 import { TabButton } from '../components/admin/TabButton';
 import { supabaseAdmin } from '../lib/supabaseAdmin';
 import { format } from 'date-fns';
+import { credibilityService, type CredibilityAnalysis, type NewsWebsite } from '../services/credibilityService';
+import { Loader2, AlertTriangle, MinusCircle, XCircle, CheckCircle } from 'lucide-react';
+import clsx from 'clsx';
+import DomainCredibilityAnalyzer from '../components/DomainCredibilityAnalyzer';
 
 // Type definitions for our data
 interface AnalysisData {
@@ -39,6 +43,23 @@ interface FeedbackData {
   created_at: string;
 }
 
+// New interface for website credibility data
+interface WebsiteCredibility {
+  id: string;
+  url: string;
+  name: string;
+  credibilityScore: number;
+  politicalBias: string;
+  notes: string;
+  lastUpdated: string;
+}
+
+// Add this interface for the edit form state
+interface EditWebsiteForm {
+  realNewsPercentage: number;
+  articleCount: number;
+}
+
 export default function AdminPage() {
   const { language } = useLanguage();
   const t = translations[language];
@@ -57,6 +78,77 @@ export default function AdminPage() {
   
   // Selected analysis for detailed view
   const [selectedAnalysis, setSelectedAnalysis] = useState<AnalysisData | null>(null);
+
+  // State for website credibility data
+  const [websites, setWebsites] = useState<WebsiteCredibility[]>([
+    {
+      id: '1',
+      url: 'https://www.manoramaonline.com',
+      name: 'Manorama Online',
+      credibilityScore: 85,
+      politicalBias: 'Center-Right',
+      notes: 'One of the largest Malayalam news outlets with generally reliable reporting.',
+      lastUpdated: '2023-12-01'
+    },
+    {
+      id: '2',
+      url: 'https://www.mathrubhumi.com',
+      name: 'Mathrubhumi',
+      credibilityScore: 82,
+      politicalBias: 'Center',
+      notes: 'Well-established newspaper with a strong focus on cultural reporting.',
+      lastUpdated: '2023-12-05'
+    },
+    {
+      id: '3',
+      url: 'https://www.madhyamam.com',
+      name: 'Madhyamam',
+      credibilityScore: 75,
+      politicalBias: 'Center-Left',
+      notes: 'Generally reliable reporting with some bias in political coverage.',
+      lastUpdated: '2023-12-10'
+    },
+    {
+      id: '4',
+      url: 'https://www.asianetnews.com',
+      name: 'Asianet News',
+      credibilityScore: 78,
+      politicalBias: 'Center-Right',
+      notes: 'Popular TV news channel with online presence, some sensationalism in reporting.',
+      lastUpdated: '2023-12-15'
+    },
+    {
+      id: '5',
+      url: 'https://www.janamtv.com',
+      name: 'Janam TV',
+      credibilityScore: 62,
+      politicalBias: 'Right',
+      notes: 'Known for right-leaning political coverage with occasional misinformation.',
+      lastUpdated: '2023-12-20'
+    }
+  ]);
+  
+  // Form state for adding/editing websites
+  const [showWebsiteForm, setShowWebsiteForm] = useState(false);
+  const [editingWebsite, setEditingWebsite] = useState<WebsiteCredibility | null>(null);
+  const [newWebsite, setNewWebsite] = useState<Partial<WebsiteCredibility>>({
+    url: '',
+    name: '',
+    credibilityScore: 50,
+    politicalBias: 'Center',
+    notes: ''
+  });
+
+  const [credibilityData, setCredibilityData] = useState<CredibilityAnalysis | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Add this state for the edit form
+  const [editingDomain, setEditingDomain] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<EditWebsiteForm>({
+    realNewsPercentage: 0,
+    articleCount: 0
+  });
 
   // Fetch data on component mount
   useEffect(() => {
@@ -138,10 +230,46 @@ export default function AdminPage() {
     fetchData();
   }, [t]);
 
+  useEffect(() => {
+    if (activeTab === 'url-rankings') {
+      loadCredibilityData();
+    }
+  }, [activeTab]);
+
+  const loadCredibilityData = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const data = await credibilityService.getCredibilityAnalysis();
+      setCredibilityData(data);
+    } catch (error) {
+      setError('Failed to load credibility data');
+      console.error('Error loading credibility data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const getCredibilityIcon = (range: string) => {
+    switch (range) {
+      case "Highly credible (90-100%)":
+        return <CheckCircle className="w-5 h-5 text-green-500" />;
+      case "Mostly credible (70-90%)":
+        return <CheckCircle className="w-5 h-5 text-blue-500" />;
+      case "Mixed credibility (30-70%)":
+        return <MinusCircle className="w-5 h-5 text-yellow-500" />;
+      case "Low credibility (10-30%)":
+        return <AlertCircle className="w-5 h-5 text-orange-500" />;
+      default:
+        return <XCircle className="w-5 h-5 text-red-500" />;
+    }
+  };
+
   const tabs = [
     { id: 'dashboard', icon: BarChart2, label: t.dashboard },
     { id: 'users', icon: Users, label: t.users },
-    { id: 'feedback', icon: MessageSquare, label: t.feedback }
+    { id: 'feedback', icon: MessageSquare, label: t.feedback },
+    { id: 'url-rankings', icon: Globe, label: 'URL Rankings' }
   ];
 
   // Format date safely
@@ -487,6 +615,103 @@ export default function AdminPage() {
     };
   };
 
+  // Handle website form submission
+  const handleWebsiteFormSubmit = () => {
+    if (editingWebsite) {
+      // Update existing website
+      setWebsites(prev => prev.map(w => 
+        w.id === editingWebsite.id 
+          ? { 
+              ...w, 
+              ...newWebsite, 
+              lastUpdated: new Date().toISOString().split('T')[0] 
+            } 
+          : w
+      ));
+    } else {
+      // Add new website
+      const websiteToAdd: WebsiteCredibility = {
+        id: Date.now().toString(), // Generate a simple ID for demo
+        ...newWebsite as any,
+        lastUpdated: new Date().toISOString().split('T')[0]
+      };
+      setWebsites(prev => [...prev, websiteToAdd]);
+    }
+    
+    // Reset form
+    setNewWebsite({
+      url: '',
+      name: '',
+      credibilityScore: 50,
+      politicalBias: 'Center',
+      notes: ''
+    });
+    setShowWebsiteForm(false);
+    setEditingWebsite(null);
+  };
+  
+  // Function to start editing a website
+  const handleEditWebsite = (website: NewsWebsite) => {
+    setEditingDomain(website.domain);
+    setEditForm({
+      realNewsPercentage: website.realNewsPercentage,
+      articleCount: website.articleCount
+    });
+  };
+  
+  // Function to delete a website
+  const handleDeleteWebsite = (id: string) => {
+    setWebsites(prev => prev.filter(w => w.id !== id));
+  };
+  
+  // Get color based on score
+  const getScoreColor = (score: number) => {
+    if (score >= 80) return 'text-green-600 dark:text-green-400';
+    if (score >= 70) return 'text-yellow-500 dark:text-yellow-400';
+    if (score >= 50) return 'text-orange-500 dark:text-orange-400';
+    return 'text-red-600 dark:text-red-400';
+  };
+
+  const handleSaveEdit = () => {
+    if (!editingDomain || !credibilityData) return;
+    
+    const updatedRankings = credibilityService.updateWebsiteData(
+      credibilityData.websiteRankings,
+      editingDomain,
+      {
+        realNewsPercentage: editForm.realNewsPercentage,
+        articleCount: editForm.articleCount
+      }
+    );
+    
+    setCredibilityData({
+      ...credibilityData,
+      websiteRankings: updatedRankings
+    });
+    
+    setEditingDomain(null);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingDomain(null);
+  };
+
+  // Update the URL Rankings tab content
+  const renderUrlRankingsTab = () => {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-semibold text-gray-800 dark:text-white">
+            {language === 'ml' ? 'വെബ്സൈറ്റ് വിശ്വസനീയത റാങ്കിംഗ്' : 'Website Credibility Rankings'}
+          </h2>
+        </div>
+
+        {/* Domain Credibility Analyzer */}
+        <DomainCredibilityAnalyzer showDebugPanel={false} />
+      </div>
+    );
+  };
+
   // Function to render the active tab content
   const renderActiveTabContent = () => {
     switch (activeTab) {
@@ -782,6 +1007,8 @@ export default function AdminPage() {
             </div>
           </div>
         );
+      case 'url-rankings':
+        return renderUrlRankingsTab();
       default:
         return null;
     }

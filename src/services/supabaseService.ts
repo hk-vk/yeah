@@ -118,22 +118,39 @@ export class SupabaseService {
     }
   }
 
-  static async getAnalysisByUserId(userId: string) {
+  static async getAnalysisByUserId(userId: string, page: number = 1, limit: number = 20) {
     try {
       if (!userId) {
         console.warn('No user ID provided to getAnalysisByUserId');
-        return [];
+        return { data: [], count: 0 };
       }
 
+      // Calculate the range start based on page and limit
+      const from = (page - 1) * limit;
+      const to = from + limit - 1;
+
+      // First get the count of all records for this user
+      const { count, error: countError } = await supabase
+        .from('analysis_result')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId);
+
+      if (countError) {
+        console.error('Error counting user analyses from Supabase:', countError);
+        return { data: [], count: 0 };
+      }
+
+      // Then get the paginated data
       const { data, error } = await supabase
         .from('analysis_result')
         .select('*')
         .eq('user_id', userId)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .range(from, to);
 
       if (error) {
         console.error('Error getting user analyses from Supabase:', error);
-        return [];
+        return { data: [], count: 0 };
       }
 
       // Validate and transform the data
@@ -143,10 +160,10 @@ export class SupabaseService {
         input: item.input || {},
       }));
 
-      return validatedData;
+      return { data: validatedData, count: count || 0 };
     } catch (error) {
       console.error('Exception getting user analyses from Supabase:', error);
-      return [];
+      return { data: [], count: 0 };
     }
   }
 

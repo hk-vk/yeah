@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { SupabaseService } from '../../services/supabaseService';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { Clock, Search, Image, Link, FileText, AlertCircle, Check, X, Info, ExternalLink, BarChart } from 'lucide-react';
+import { Clock, Search, Image, Link, FileText, AlertCircle, Check, X, Info, ExternalLink, BarChart, ChevronDown } from 'lucide-react';
 import clsx from 'clsx';
 import { format } from 'date-fns';
 import type { AnalysisResult } from '../../types/supabase';
@@ -10,7 +10,13 @@ import type { AnalysisResult } from '../../types/supabase';
 export function PastSearches() {
   const [analyses, setAnalyses] = useState<AnalysisResult[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [selectedAnalysis, setSelectedAnalysis] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [totalCount, setTotalCount] = useState(0);
+  const limit = 20;
+  
   const { user } = useAuth();
   const { language } = useLanguage();
   const isMalayalam = language === 'ml';
@@ -21,9 +27,9 @@ export function PastSearches() {
       
       try {
         setLoading(true);
-        const data = await SupabaseService.getAnalysisByUserId(user.id);
+        const { data, count } = await SupabaseService.getAnalysisByUserId(user.id, 1, limit);
         console.log('Fetched analyses from analysis_result table:', {
-          count: data.length,
+          count: count,
           samples: data.slice(0, 2).map(item => ({
             id: item.id,
             type: item.type,
@@ -34,6 +40,8 @@ export function PastSearches() {
           }))
         });
         setAnalyses(data);
+        setTotalCount(count);
+        setHasMore(data.length < count);
       } catch (error) {
         console.error('Error fetching analyses from analysis_result table:', error);
       } finally {
@@ -43,6 +51,28 @@ export function PastSearches() {
 
     fetchAnalyses();
   }, [user?.id]);
+
+  const loadMore = async () => {
+    if (!user?.id || loadingMore || !hasMore) return;
+    
+    setLoadingMore(true);
+    try {
+      const nextPage = page + 1;
+      const { data, count } = await SupabaseService.getAnalysisByUserId(user.id, nextPage, limit);
+      
+      if (data.length > 0) {
+        setAnalyses(prev => [...prev, ...data]);
+        setPage(nextPage);
+        setHasMore(analyses.length + data.length < count);
+      } else {
+        setHasMore(false);
+      }
+    } catch (error) {
+      console.error('Error loading more analyses:', error);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   const getTypeIcon = (type: AnalysisResult['type']) => {
     switch (type) {
@@ -418,6 +448,35 @@ export function PastSearches() {
               )}
             </div>
           ))}
+          
+          {hasMore && (
+            <div className="mt-6 flex justify-center">
+              <button
+                onClick={loadMore}
+                disabled={loadingMore}
+                className={clsx(
+                  "flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors duration-150",
+                  "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20",
+                  "hover:bg-blue-100 dark:hover:bg-blue-800/30",
+                  "focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50",
+                  "border border-blue-200 dark:border-blue-800/50",
+                  loadingMore && "opacity-70 cursor-not-allowed"
+                )}
+              >
+                {loadingMore ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+                    {isMalayalam ? 'ലോഡിംഗ്...' : 'Loading...'}
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown className="h-4 w-4 mr-1" />
+                    {isMalayalam ? 'കൂടുതൽ കാണിക്കുക' : 'Load More'}
+                  </>
+                )}
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

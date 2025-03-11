@@ -48,7 +48,7 @@ export const ResultCard: FC<ResultCardProps> = ({
     
     // Analyze writing style if content is available
     const analyzeWritingStyle = async () => {
-      if (content && content.length > 20) {
+      if (content) {
         try {
           const styleResult = await analyzeService.analyzeWritingStyle(content);
           setWritingStyle(styleResult);
@@ -235,7 +235,7 @@ export const ResultCard: FC<ResultCardProps> = ({
           </div>
 
           {/* Writing Style Analysis */}
-          {writingStyle && content && content.length > 20 && (
+          {writingStyle && content && (
             <div className="mb-8">
               <h3 className={clsx(
                 "text-lg font-semibold mb-5 text-gray-800 dark:text-gray-100 flex items-center",
