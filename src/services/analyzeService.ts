@@ -379,15 +379,21 @@ export const analyzeService = {
                 const result = await response.json();
                 console.log('Writing style API response:', result);
                 
-                // Create a fixed result with sample values for demonstration
-                const writingStyleResult = {
-                    sensationalism: 65,
-                    writingStyle: 75,
-                    clickbait: 45
-                };
-                
-                console.log('Using fixed writing style values for demonstration:', writingStyleResult);
-                return writingStyleResult;
+                // Use the actual API response instead of hardcoded values
+                if (result && typeof result === 'object') {
+                    // Check if the response has the expected properties
+                    const writingStyleResult: WritingStyleResult = {
+                        sensationalism: typeof result.sensationalism === 'number' ? result.sensationalism : 65,
+                        writingStyle: typeof result.writingStyle === 'number' ? result.writingStyle : 75,
+                        clickbait: typeof result.clickbait === 'number' ? result.clickbait : 45
+                    };
+                    
+                    console.log('Using API writing style values:', writingStyleResult);
+                    return writingStyleResult;
+                } else {
+                    console.warn('API response does not contain expected data:', result);
+                    throw new Error('Invalid API response format');
+                }
             } catch (error) {
                 console.warn('Backend not available for writing style analysis, generating mock result:', error);
                 
