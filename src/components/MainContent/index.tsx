@@ -62,6 +62,36 @@ export function MainContent() {
     setCurrentImageContent(imageContent || null);
     
     try {
+      // URL CASE: Analyze URL
+      if (type === 'url' && processedContent) {
+        try {
+          const result = await analyzeService.analyzeUrl(processedContent, user?.id);
+          if (isTextAnalysisResult(result)) {
+            setTextResult({
+              ...result,
+              type: 'url'
+            });
+            
+            // If there's an image URL in the input, set it
+            if (result.input?.image_url) {
+              setCurrentImageContent(result.input.image_url);
+            }
+            
+            // Show text analysis
+            setActiveResultIndex(0);
+          }
+        } catch (error) {
+          console.error('URL analysis failed:', error);
+          toast.error(
+            language === 'ml' 
+              ? 'URL വിശകലനം പരാജയപ്പെട്ടു' 
+              : 'URL analysis failed'
+          );
+        }
+        setIsAnalyzing(false);
+        return;
+      }
+      
       // TEXT ONLY CASE: Analyze text without image
       if (processedContent && !imageContent) {
         try {
@@ -422,7 +452,7 @@ export function MainContent() {
                             ? 'bg-blue-500' 
                             : 'bg-gray-300 hover:bg-blue-200'
                         }`}
-                        aria-label={language === 'ml' ? 'വാചക വിശകലനം കാണിക്കുക' : 'Show text analysis'}
+                        aria-label={language === 'ml' ? 'വാചക വിശാൽനം കാണിക്കുക' : 'Show text analysis'}
                         aria-pressed={activeResultIndex === 0}
                       />
                       <button
@@ -454,8 +484,8 @@ export function MainContent() {
                   {/* Keyboard Navigation Hint */}
                   <p className="text-sm text-gray-500 dark:text-gray-400">
                     {language === 'ml' 
-                      ? 'ഇടത്തേക്കും വലത്തേക്കും അമ്പ് കീകൾ ഉപയോഗിച്ച് മാറുക ↔️'
-                      : 'Use left and right arrow keys to switch ↔️'}
+                      ? 'ഇടത്തേക്കും വലത്തേക്കും അമ്പ് കീകൾ ഉപയോഗിച്ച് മാറുക ↔'
+                      : 'Use left and right arrow keys to switch ↔'}
                   </p>
                 </div>
                 
