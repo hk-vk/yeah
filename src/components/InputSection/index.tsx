@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Image, FileText, X, Globe, Link } from 'lucide-react';
+import { Image, FileText, X, Globe, Link, Command, KeyRound } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { translations } from '../../locales/translations';
 import toast from 'react-hot-toast';
@@ -126,6 +126,15 @@ export function InputSection({ onAnalyze, isAnalyzing = false }: Props) {
     }
   };
 
+  // Handle keyboard shortcuts
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Submit on Ctrl+Enter
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !isAnalyzing) {
+      e.preventDefault();
+      handleSubmit(e);
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: -20 }}
@@ -140,28 +149,12 @@ export function InputSection({ onAnalyze, isAnalyzing = false }: Props) {
               {translations[language].inputLabel}
             </div>
 
-            {/* URL Indicator */}
-            {isUrl && (
-              <motion.div 
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                className="absolute top-3 left-3 z-10 pointer-events-none"
-              >
-                <div className="flex items-center px-2.5 py-1 bg-blue-100 dark:bg-blue-900/40 rounded-full border border-blue-300 dark:border-blue-700/50 shadow-sm">
-                  <Globe className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                  <span className="ml-1.5 text-xs font-medium text-blue-700 dark:text-blue-300">
-                    URL
-                  </span>
-                </div>
-              </motion.div>
-            )}
-
             {/* Text Input Area */}
             <textarea
               ref={textAreaRef}
               value={text}
               onChange={handleTextChange}
+              onKeyDown={handleKeyDown}
               placeholder={translations[language].placeholder}
               className={clsx(
                 "w-full bg-white/50 dark:bg-gray-800/50 rounded-lg resize-none shadow-sm",
@@ -169,22 +162,31 @@ export function InputSection({ onAnalyze, isAnalyzing = false }: Props) {
                 "focus:border-blue-400 focus:ring-2 focus:ring-blue-300/30 dark:focus:ring-blue-700/30 focus:outline-none",
                 "placeholder:text-gray-400 dark:placeholder:text-gray-500",
                 "transition-all duration-200",
-                isUrl ? "pt-12 pb-4 px-4" : "pt-4 pb-4 px-4",
+                "p-4",
                 "min-h-[120px]",
                 isMalayalam && "text-lg",
                 isUrl && "border-blue-400 dark:border-blue-600"
               )}
             />
 
-            {/* Character Count */}
-            {text && !isUrl && (
-              <div className={clsx(
-                "absolute bottom-3 right-4 text-xs",
-                text.length < 20 ? "text-amber-500 dark:text-amber-400" : "text-gray-500 dark:text-gray-400"
-              )}>
-                {text.length} {text.length < 20 && <span>/ 20</span>}
+            {/* Character Count and Keyboard Shortcut Hint */}
+            <div className="absolute bottom-3 right-4 flex items-center gap-3">
+              {/* Keyboard Shortcut Hint */}
+              <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center">
+                <KeyRound className="w-3 h-3 mr-1" />
+                <span>Ctrl + Enter</span>
               </div>
-            )}
+              
+              {/* Character Count */}
+              {text && !isUrl && (
+                <div className={clsx(
+                  "text-xs",
+                  text.length < 20 ? "text-amber-500 dark:text-amber-400" : "text-gray-500 dark:text-gray-400"
+                )}>
+                  {text.length} {text.length < 20 && <span>/ 20</span>}
+                </div>
+              )}
+            </div>
 
             {/* URL hint if detected */}
             {isUrl && (
@@ -280,7 +282,8 @@ export function InputSection({ onAnalyze, isAnalyzing = false }: Props) {
               type="submit"
               disabled={isAnalyzing}
               className={clsx(
-                "flex items-center gap-2 px-6 py-2 rounded-lg font-medium transition-all shadow-md",
+                "flex items-center gap-2 px-6 py-2 rounded-lg font-medium transition-all shadow-md relative overflow-hidden",
+                "group",
                 isUrl ? (
                   "bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600"
                 ) : (
@@ -294,19 +297,29 @@ export function InputSection({ onAnalyze, isAnalyzing = false }: Props) {
               whileHover={{ scale: isAnalyzing ? 1 : 1.02 }}
               whileTap={{ scale: isAnalyzing ? 1 : 0.98 }}
             >
-              {isAnalyzing ? (
-                <>
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  <span>{language === 'ml' ? 'വിശകലനം ചെയ്യുന്നു...' : 'Analyzing...'}</span>
-                </>
-              ) : (
-                <>
-                  {isUrl ? <Globe className="w-5 h-5" /> : <FileText className="w-5 h-5" />}
-                  {isUrl 
-                    ? (language === 'ml' ? 'URL വിശകലനം ചെയ്യുക' : 'Analyze URL')
-                    : translations[language].analyzeButton}
-                </>
-              )}
+              {/* Moving border effect */}
+              <span className="absolute inset-0 w-full h-full">
+                <span className="absolute inset-[-2px] rounded-lg bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
+                <span className="absolute inset-[-1px] rounded-lg bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 animate-rotate-gradient opacity-0 group-hover:opacity-100"></span>
+                <span className="absolute inset-[1px] rounded-lg bg-blue-600 group-hover:bg-blue-700"></span>
+              </span>
+              
+              {/* Button content */}
+              <span className="relative z-10 flex items-center gap-2">
+                {isAnalyzing ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>{language === 'ml' ? 'വിശകലനം ചെയ്യുന്നു...' : 'Analyzing...'}</span>
+                  </>
+                ) : (
+                  <>
+                    {isUrl ? <Globe className="w-5 h-5" /> : <FileText className="w-5 h-5" />}
+                    {isUrl 
+                      ? (language === 'ml' ? 'URL വിശകലനം ചെയ്യുക' : 'Analyze URL')
+                      : translations[language].analyzeButton}
+                  </>
+                )}
+              </span>
             </motion.button>
           </div>
         </form>

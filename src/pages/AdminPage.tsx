@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Users, BarChart2, MessageSquare, Globe, Plus, Edit, Trash2, Star, AlertCircle, Check, X, Pencil, Save } from 'lucide-react';
+import { Users, BarChart2, MessageSquare, Globe, Plus, Edit, Trash2, Star, AlertCircle, Check, X, Pencil, Save, ThumbsUp, ThumbsDown, Mail, Lock, LogIn, LogOut, Loader2 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { translations } from '../locales/translations';
 import { Card } from '../components/common/Card';
@@ -9,7 +9,7 @@ import { TabButton } from '../components/admin/TabButton';
 import { supabaseAdmin } from '../lib/supabaseAdmin';
 import { format } from 'date-fns';
 import { credibilityService, type CredibilityAnalysis, type NewsWebsite } from '../services/credibilityService';
-import { Loader2, AlertTriangle, MinusCircle, XCircle, CheckCircle } from 'lucide-react';
+import { AlertTriangle, MinusCircle, XCircle } from 'lucide-react';
 import clsx from 'clsx';
 import DomainCredibilityAnalyzer from '../components/DomainCredibilityAnalyzer';
 
@@ -60,10 +60,221 @@ interface EditWebsiteForm {
   articleCount: number;
 }
 
+// Add this interface for admin login
+interface AdminCredentials {
+  email: string;
+  password: string;
+}
+
+// Login overlay component - moved outside main component
+const LoginOverlay = ({ 
+  isVisible, 
+  onLogin, 
+  error, 
+  language 
+}: { 
+  isVisible: boolean;
+  onLogin: (email: string, password: string) => void;
+  error: string | null;
+  language: string;
+}) => {
+  const [form, setForm] = useState({
+    email: '',
+    password: ''
+  });
+  const [validationErrors, setValidationErrors] = useState({
+    email: '',
+    password: ''
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const validateForm = () => {
+    const errors = {
+      email: '',
+      password: ''
+    };
+    let isValid = true;
+
+    // Email validation
+    if (!form.email) {
+      errors.email = language === 'ml' ? 'ഇമെയിൽ നൽകേണ്ടതാണ്' : 'Email is required';
+      isValid = false;
+    } else if (!/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(form.email)) {
+      errors.email = language === 'ml' ? 'സാധുവായ ഇമെയിൽ നൽകുക' : 'Invalid email address';
+      isValid = false;
+    }
+
+    // Password validation
+    if (!form.password) {
+      errors.password = language === 'ml' ? 'പാസ്‌വേഡ് നൽകേണ്ടതാണ്' : 'Password is required';
+      isValid = false;
+    } else if (form.password.length < 6) {
+      errors.password = language === 'ml' ? 'പാസ്‌വേഡ് 6 അക്ഷരങ്ങളെങ്കിലും ഉണ്ടായിരിക്കണം' : 'Password must be at least 6 characters';
+      isValid = false;
+    }
+
+    setValidationErrors(errors);
+    return isValid;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    if (validateForm()) {
+      try {
+        await onLogin(form.email, form.password);
+      } catch (error) {
+        console.error('Login error:', error);
+      }
+    }
+
+    setIsSubmitting(false);
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setForm(prev => ({
+      ...prev,
+      [name]: value
+    }));
+    // Clear validation error when user starts typing
+    if (validationErrors[name as keyof typeof validationErrors]) {
+      setValidationErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
+    }
+  };
+
+  if (!isVisible) return null;
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+      className="fixed inset-0 z-50 flex items-center justify-center"
+    >
+      <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm" />
+      <motion.div 
+        initial={{ scale: 0.95, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.95, opacity: 0 }}
+        transition={{ duration: 0.2 }}
+        className="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl p-8 w-full max-w-md"
+      >
+        <h2 className="text-2xl font-bold text-center mb-6 text-gray-900 dark:text-white">
+          {language === 'ml' ? 'അഡ്മിൻ ലോഗിൻ' : 'Admin Login'}
+        </h2>
+        
+        {error && (
+          <div className="mb-4 p-3 bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 rounded-lg flex items-center">
+            <AlertCircle className="w-5 h-5 mr-2" />
+            {error}
+          </div>
+        )}
+        
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div>
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              {language === 'ml' ? 'ഇമെയിൽ' : 'Email'}
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Mail className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                autoComplete="email"
+                required
+                value={form.email}
+                onChange={handleChange}
+                className={clsx(
+                  "block w-full pl-10 pr-3 py-2 border rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white",
+                  validationErrors.email 
+                    ? "border-red-300 dark:border-red-600" 
+                    : "border-gray-300 dark:border-gray-600"
+                )}
+                placeholder="admin@example.com"
+              />
+            </div>
+            {validationErrors.email && (
+              <p className="mt-1 text-sm text-red-600 dark:text-red-400">{validationErrors.email}</p>
+            )}
+          </div>
+          
+          <div>
+            <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              {language === 'ml' ? 'പാസ്‌വേഡ്' : 'Password'}
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Lock className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                autoComplete="current-password"
+                required
+                value={form.password}
+                onChange={handleChange}
+                className={clsx(
+                  "block w-full pl-10 pr-3 py-2 border rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white",
+                  validationErrors.password 
+                    ? "border-red-300 dark:border-red-600" 
+                    : "border-gray-300 dark:border-gray-600"
+                )}
+                placeholder="••••••••"
+              />
+            </div>
+            {validationErrors.password && (
+              <p className="mt-1 text-sm text-red-600 dark:text-red-400">{validationErrors.password}</p>
+            )}
+          </div>
+          
+          <div>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className={clsx(
+                "w-full flex justify-center items-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white",
+                isSubmitting 
+                  ? "bg-blue-400 cursor-not-allowed" 
+                  : "bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:bg-blue-700 dark:hover:bg-blue-800"
+              )}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  {language === 'ml' ? 'ലോഗിൻ ചെയ്യുന്നു...' : 'Logging in...'}
+                </>
+              ) : (
+                <>
+                  <LogIn className="w-5 h-5 mr-2" />
+                  {language === 'ml' ? 'ലോഗിൻ' : 'Login'}
+                </>
+              )}
+            </button>
+          </div>
+        </form>
+      </motion.div>
+    </motion.div>
+  );
+};
+
 export default function AdminPage() {
   const { language } = useLanguage();
   const t = translations[language];
   const [activeTab, setActiveTab] = useState('dashboard');
+  
+  // Login state
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
   
   // State for our data
   const [analyses, setAnalyses] = useState<AnalysisData[]>([]);
@@ -72,7 +283,6 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState([
     { label: t.totalAnalyses, value: '0' },
-    { label: t.accuracyRate, value: '0%' },
     { label: t.userFeedback, value: '0' }
   ]);
   
@@ -188,36 +398,10 @@ export default function AdminPage() {
         // Calculate stats
         const totalAnalyses = analysesData?.length || 0;
         
-        // For accuracyRate, calculate from analysis results
-        let accuracyRate = 0;
-        if (analysesData && analysesData.length > 0) {
-          const analysesWithScores = analysesData.filter(a => 
-            a.result && 
-            (typeof a.result.score === 'number' || 
-             typeof a.result.accuracy === 'number' || 
-             typeof a.result.CONFIDENCE === 'number')
-          );
-          
-          if (analysesWithScores.length > 0) {
-            const totalScore = analysesWithScores.reduce((sum, a) => {
-              const score = typeof a.result?.score === 'number' 
-                ? a.result.score 
-                : (typeof a.result?.accuracy === 'number' 
-                    ? a.result.accuracy 
-                    : (typeof a.result?.CONFIDENCE === 'number' 
-                        ? a.result.CONFIDENCE / 100 
-                        : 0));
-              return sum + score;
-            }, 0);
-            accuracyRate = (totalScore / analysesWithScores.length) * 100;
-          }
-        }
-        
         const totalFeedback = feedbackData?.length || 0;
         
         setStats([
           { label: t.totalAnalyses, value: totalAnalyses.toString() },
-          { label: t.accuracyRate, value: `${accuracyRate.toFixed(1)}%` },
           { label: t.userFeedback, value: totalFeedback.toString() }
         ]);
       } catch (error) {
@@ -838,8 +1022,22 @@ export default function AdminPage() {
                           <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white max-w-md truncate">
                             {item.feedback_text || item.comment || '-'}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-yellow-500 dark:text-yellow-400">
-                            {item.rating !== undefined ? `${'★'.repeat(item.rating)}${'☆'.repeat(5-item.rating)}` : '-'}
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                            {item.rating !== undefined ? (
+                              <span className={item.rating >= 1 ? "text-green-500 dark:text-green-400 font-medium" : "text-red-500 dark:text-red-400 font-medium"}>
+                                {item.rating >= 1 ? (
+                                  <div className="flex items-center">
+                                    <ThumbsUp className="w-4 h-4 mr-1" />
+                                    <span>Positive</span>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center">
+                                    <ThumbsDown className="w-4 h-4 mr-1" />
+                                    <span>Negative</span>
+                                  </div>
+                                )}
+                              </span>
+                            ) : '-'}
                           </td>
                           <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-300 max-w-xs truncate">
                             {relatedAnalysis ? (
@@ -1014,6 +1212,35 @@ export default function AdminPage() {
     }
   };
 
+  // Handle login
+  const handleLogin = useCallback((email: string, password: string) => {
+    // Hardcode the credentials directly for now
+    const adminEmail = 'vkharikrishnan45@gmail.com';
+    const adminPassword = 'Hkvk@2003';
+    
+    if (email.toLowerCase() === adminEmail.toLowerCase() && password === adminPassword) {
+      setIsLoggedIn(true);
+      setLoginError(null);
+      sessionStorage.setItem('adminLoggedIn', 'true');
+    } else {
+      setLoginError('Invalid email or password');
+    }
+  }, []);
+
+  // Check for existing login
+  useEffect(() => {
+    const loggedIn = sessionStorage.getItem('adminLoggedIn') === 'true';
+    if (loggedIn) {
+      setIsLoggedIn(true);
+    }
+  }, []);
+
+  // Add logout handler
+  const handleLogout = useCallback(() => {
+    setIsLoggedIn(false);
+    sessionStorage.removeItem('adminLoggedIn');
+  }, []);
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -1021,37 +1248,65 @@ export default function AdminPage() {
       transition={{ duration: 0.5 }}
       className="space-y-6"
     >
-      <Card>
-        <Card.Header>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            {t.adminDashboard}
-          </h1>
-        </Card.Header>
-        <Card.Body>
-          <div className="flex space-x-4 mb-6">
-            {tabs.map(({ id, icon, label }) => (
-              <TabButton
-                key={id}
-                id={id}
-                icon={icon}
-                label={label}
-                isActive={activeTab === id}
-                onClick={() => setActiveTab(id)}
-              />
-            ))}
-          </div>
-
-          {loading ? (
-            <div className="flex justify-center items-center h-48">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500" />
+      <LoginOverlay 
+        isVisible={!isLoggedIn}
+        onLogin={handleLogin}
+        error={loginError}
+        language={language}
+      />
+      
+      <motion.div 
+        animate={{ 
+          filter: !isLoggedIn ? 'blur(4px)' : 'blur(0px)',
+          opacity: !isLoggedIn ? 0.5 : 1
+        }}
+        transition={{ duration: 0.2 }}
+        className="pointer-events-none"
+        style={{ pointerEvents: !isLoggedIn ? 'none' : 'auto' }}
+      >
+        <Card>
+          <Card.Header>
+            <div className="flex justify-between items-center">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                {t.adminDashboard}
+              </h1>
+              {isLoggedIn && (
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center px-4 py-2 text-sm font-medium text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 focus:outline-none"
+                >
+                  <LogOut className="w-4 h-4 mr-2" />
+                  {language === 'ml' ? 'ലോഗൗട്ട്' : 'Logout'}
+                </button>
+              )}
             </div>
-          ) : (
-            <Card className="bg-gray-50 dark:bg-gray-700 p-6">
-              {renderActiveTabContent()}
-            </Card>
-          )}
-        </Card.Body>
-      </Card>
+          </Card.Header>
+          <Card.Body>
+            <div className="flex space-x-4 mb-6">
+              {tabs.map(({ id, icon, label }) => (
+                <TabButton
+                  key={id}
+                  id={id}
+                  icon={icon}
+                  label={label}
+                  isActive={activeTab === id}
+                  onClick={() => setActiveTab(id)}
+                />
+              ))}
+            </div>
+
+            {loading ? (
+              <div className="flex justify-center items-center h-48">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500" />
+              </div>
+            ) : (
+              <Card className="bg-gray-50 dark:bg-gray-700 p-6">
+                {renderActiveTabContent()}
+              </Card>
+            )}
+          </Card.Body>
+        </Card>
+      </motion.div>
     </motion.div>
   );
 }

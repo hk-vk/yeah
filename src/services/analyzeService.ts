@@ -208,6 +208,30 @@ export const analyzeService = {
         try {
             console.log('Analyzing URL using Exa API:', url);
             
+            // First call the specialized URL analysis endpoint
+            let urlAnalysisData = null;
+            try {
+                // Call the URL analysis endpoint
+                const urlAnalysisResponse = await connectionManager.fetch(
+                    `${API_CONFIG.BASE_URL}/api/analyze-url`,
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ url }),
+                    }
+                );
+                
+                if (urlAnalysisResponse.ok) {
+                    urlAnalysisData = await urlAnalysisResponse.json();
+                    console.log('URL analysis data:', urlAnalysisData);
+                }
+            } catch (urlAnalysisError) {
+                console.error('Error fetching URL analysis data:', urlAnalysisError);
+                // Continue with content extraction even if URL analysis fails
+            }
+            
             // Use exaService to extract URL content
             const extractedContent = await exaService.extractUrlContent(url);
             
@@ -262,7 +286,9 @@ export const analyzeService = {
                     published_date: extractedContent.publishedDate
                 },
                 content: extractedContent.text,
-                image: extractedContent.image
+                image: extractedContent.image,
+                // Add URL analysis data if available
+                urlAnalysis: urlAnalysisData
             };
 
             // Save analysis to Supabase and wait for it to complete

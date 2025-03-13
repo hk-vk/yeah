@@ -11,6 +11,23 @@ export interface TextAnalysisResult extends BaseAnalysisResult {
   CONFIDENCE: number;
   EXPLANATION_EN: string;
   EXPLANATION_ML: string;
+  input?: {
+    url?: string;
+    title?: string;
+    published_date?: string;
+    image_url?: string;
+  };
+  urlAnalysis?: {
+    url: string;
+    prediction: string;
+    prediction_probabilities: number[];
+    google_safe_browsing_flag: boolean;
+    trusted: boolean;
+    trust_score: number;
+    is_trustworthy: boolean;
+    trust_reasons: string[];
+    final_decision: string;
+  };
 }
 
 export interface ImageAnalysisResult extends BaseAnalysisResult {

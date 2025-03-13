@@ -14,6 +14,7 @@ export default {
         'glow': 'glow 2s ease-in-out infinite alternate',
         'float': 'float 20s linear infinite',
         'pulse-glow': 'pulse-glow 2s ease-in-out infinite alternate',
+        'rotate-gradient': 'rotate-gradient 3s linear infinite',
       },
       keyframes: {
         gradient: {
@@ -52,6 +53,17 @@ export default {
           '100%': {
             opacity: 0.8,
             filter: 'brightness(1.2) blur(12px)',
+          }
+        },
+        'rotate-gradient': {
+          '0%': {
+            'background-position': '0% 50%',
+          },
+          '50%': {
+            'background-position': '100% 50%',
+          },
+          '100%': {
+            'background-position': '0% 50%',
           }
         }
       }

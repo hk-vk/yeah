@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { InputSection } from '../InputSection';
 import { ResultCard } from '../ResultCard';
 import { ImageResultCard } from '../ImageResultCard';
+import { UrlAnalysisCard } from '../UrlAnalysisCard';
 import { FeedbackSection } from '../FeedbackSection';
 import { LoadingSpinner } from './LoadingSpinner';
 import { AnalysisHistory } from '../AnalysisHistory';
@@ -37,7 +38,8 @@ export function MainContent() {
   const { user } = useAuth();
   const cardRefs = {
     image: useRef<HTMLDivElement>(null),
-    text: useRef<HTMLDivElement>(null)
+    text: useRef<HTMLDivElement>(null),
+    url: useRef<HTMLDivElement>(null)
   };
 
   // Helper function to convert undefined to null for ImageResultCard
@@ -200,20 +202,43 @@ export function MainContent() {
     return new Blob([u8arr], { type: mime });
   };
 
-  const hasMultipleResults = imageResult && textResult;
+  const hasMultipleResults = (
+    (textResult && imageResult) || 
+    (textResult?.type === 'url' && textResult?.urlAnalysis)
+  );
 
   const navigateResults = (direction: 'next' | 'prev') => {
-    const newIndex = direction === 'next' ? 1 : 0;
+    if (!hasMultipleResults) return;
+    
+    const maxIndex = textResult?.type === 'url' && textResult?.urlAnalysis ? 1 : 
+                    (textResult && imageResult) ? 1 : 0;
+    
+    const newIndex = direction === 'next' 
+      ? Math.min(activeResultIndex + 1, maxIndex)
+      : Math.max(activeResultIndex - 1, 0);
+    
     setActiveResultIndex(newIndex);
-    const ref = newIndex === 0 ? cardRefs.text : cardRefs.image;
-    ref.current?.focus();
-    announceCardChange(newIndex === 0 ? 'text' : 'image');
+    
+    // Focus appropriate card
+    if (newIndex === 0) {
+      cardRefs.text.current?.focus();
+      announceCardChange('text');
+    } else if (textResult?.type === 'url' && textResult?.urlAnalysis) {
+      cardRefs.url.current?.focus();
+      announceCardChange('url');
+    } else {
+      cardRefs.image.current?.focus();
+      announceCardChange('image');
+    }
   };
 
-  const announceCardChange = (type: 'image' | 'text') => {
-    const message = type === 'image'
-      ? (language === 'ml' ? 'ചിത്ര വിശകലനം കാണിക്കുന്നു' : 'Showing image analysis')
-      : (language === 'ml' ? 'വാചക വിശകലനം കാണിക്കുന്നു' : 'Showing text analysis');
+  const announceCardChange = (type: 'image' | 'text' | 'url') => {
+    // Update announcement based on type
+    const message = type === 'image' 
+      ? language === 'ml' ? 'ചിത്ര വിശകലനം കാണിക്കുന്നു' : 'Showing image analysis'
+      : type === 'url'
+        ? language === 'ml' ? 'URL വിശകലനം കാണിക്കുന്നു' : 'Showing URL analysis'
+        : language === 'ml' ? 'വാചക വിശകലനം കാണിക്കുന്നു' : 'Showing text analysis';
     
     // Create and clean up aria live region
     const announcement = document.createElement('div');
@@ -342,7 +367,7 @@ export function MainContent() {
         ) : (
           <>
             {/* TEXT-ONLY RESULT */}
-            {textResult && !imageResult && (
+            {textResult && !imageResult && !(textResult.type === 'url' && textResult.urlAnalysis) && (
               <div className="min-h-[400px] mb-24">
                 <ResultCard 
                   result={textResult} 
@@ -405,28 +430,54 @@ export function MainContent() {
                   </div>
                 </div>
                 
-                <div className={clsx(
-                  "transition-opacity duration-300",
-                  activeResultIndex === 1 ? "opacity-100" : "opacity-0 hidden"
-                )}>
-                  <div
-                    ref={cardRefs.image}
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === 'ArrowLeft') {
-                        e.preventDefault();
-                        navigateResults('prev');
-                      }
-                    }}
-                    className="outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 rounded-lg"
-                  >
-                    <ImageResultCard 
-                      result={imageResult} 
-                      imageUrl={currentImageContent} 
-                      extractedText={extractedText}
-                    />
+                {textResult?.type === 'url' && textResult?.urlAnalysis ? (
+                  <div className={clsx(
+                    "transition-opacity duration-300",
+                    activeResultIndex === 1 ? "opacity-100" : "opacity-0 hidden"
+                  )}>
+                    <div
+                      ref={cardRefs.url}
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'ArrowLeft') {
+                          e.preventDefault();
+                          navigateResults('prev');
+                        }
+                      }}
+                      className="outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 rounded-lg"
+                    >
+                      <UrlAnalysisCard 
+                        result={textResult} 
+                        url={textResult.urlAnalysis.url || textResult.input?.url || currentContent}
+                      />
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className={clsx(
+                    "transition-opacity duration-300",
+                    activeResultIndex === 1 ? "opacity-100" : "opacity-0 hidden"
+                  )}>
+                    <div
+                      ref={cardRefs.image}
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'ArrowLeft') {
+                          e.preventDefault();
+                          navigateResults('prev');
+                        }
+                      }}
+                      className="outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 rounded-lg"
+                    >
+                      {imageResult && (
+                        <ImageResultCard 
+                          result={imageResult} 
+                          imageUrl={currentImageContent} 
+                          extractedText={extractedText}
+                        />
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {/* Navigation Controls */}
                 <div className="flex flex-col items-center mt-8 space-y-4">
@@ -450,20 +501,30 @@ export function MainContent() {
                         className={`w-3 h-3 rounded-full transition-colors ${
                           activeResultIndex === 0 
                             ? 'bg-blue-500' 
-                            : 'bg-gray-300 hover:bg-blue-200'
+                            : 'bg-gray-300 hover:bg-gray-400'
                         }`}
-                        aria-label={language === 'ml' ? 'വാചക വിശാൽനം കാണിക്കുക' : 'Show text analysis'}
-                        aria-pressed={activeResultIndex === 0}
+                        aria-label={
+                          language === 'ml' 
+                            ? 'വാചക വിശകലനം കാണിക്കുക' 
+                            : 'Show text analysis'
+                        }
                       />
                       <button
                         onClick={() => setActiveResultIndex(1)}
                         className={`w-3 h-3 rounded-full transition-colors ${
                           activeResultIndex === 1 
                             ? 'bg-blue-500' 
-                            : 'bg-gray-300 hover:bg-blue-200'
+                            : 'bg-gray-300 hover:bg-gray-400'
                         }`}
-                        aria-label={language === 'ml' ? 'ചിത്ര വിശകലനം കാണിക്കുക' : 'Show image analysis'}
-                        aria-pressed={activeResultIndex === 1}
+                        aria-label={
+                          language === 'ml' 
+                            ? textResult?.type === 'url' && textResult?.urlAnalysis 
+                              ? 'URL വിശകലനം കാണിക്കുക' 
+                              : 'ചിത്ര വിശകലനം കാണിക്കുക'
+                            : textResult?.type === 'url' && textResult?.urlAnalysis
+                              ? 'Show URL analysis'
+                              : 'Show image analysis'
+                        }
                       />
                     </div>
                     
@@ -481,11 +542,10 @@ export function MainContent() {
                     </button>
                   </div>
                   
-                  {/* Keyboard Navigation Hint */}
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                  <p className="text-sm text-gray-500 dark:text-gray-400 text-center mt-2">
                     {language === 'ml' 
-                      ? 'ഇടത്തേക്കും വലത്തേക്കും അമ്പ് കീകൾ ഉപയോഗിച്ച് മാറുക ↔'
-                      : 'Use left and right arrow keys to switch ↔'}
+                      ? 'ഇടത്തേക്കും വലത്തേക്കുമുള്ള അമ്പ് കീകൾ ഉപയോഗിച്ച് ഫലങ്ങൾക്കിടയിൽ മാറുക' 
+                      : 'Use left and right arrow keys to navigate between results'}
                   </p>
                 </div>
                 
