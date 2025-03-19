@@ -318,27 +318,25 @@ export function MainContent() {
     }
   };
 
-  // Add keyboard navigation handler
+  // Add keyboard navigation handler for the entire component
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!hasMultipleResults) return;
       
-      if (e.key === 'ArrowRight' && activeResultIndex === 0) {
+      if (e.key === 'ArrowRight') {
         e.preventDefault();
-        setActiveResultIndex(1);
-        cardRefs.image.current?.focus();
-        announceCardChange('image');
-      } else if (e.key === 'ArrowLeft' && activeResultIndex === 1) {
+        navigateResults('next');
+      } else if (e.key === 'ArrowLeft') {
         e.preventDefault();
-        setActiveResultIndex(0);
-        cardRefs.text.current?.focus();
-        announceCardChange('text');
+        navigateResults('prev');
       }
     };
-
+    
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [hasMultipleResults, activeResultIndex]);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [hasMultipleResults, navigateResults]);
 
   // Calculate total number of results
   const getTotalResults = () => {
@@ -350,31 +348,8 @@ export function MainContent() {
     return count;
   };
 
-  // Add a handleCardKeyDown function to fix the error
-  const handleCardKeyDown = (e: React.KeyboardEvent, index: number) => {
-    if (e.key === 'ArrowRight') {
-      e.preventDefault();
-      navigateResults('next');
-    } else if (e.key === 'ArrowLeft') {
-      e.preventDefault();
-      navigateResults('prev');
-    }
-  };
-
   return (
-    <div 
-      className="relative min-h-screen"
-      tabIndex={0}
-      onKeyDown={(e) => {
-        if (e.key === 'ArrowRight') {
-          e.preventDefault();
-          navigateResults('next');
-        } else if (e.key === 'ArrowLeft') {
-          e.preventDefault();
-          navigateResults('prev');
-        }
-      }}
-    >
+    <div className="w-full max-w-4xl mx-auto overflow-hidden">
       <motion.div
         className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-purple-500/5 to-indigo-500/5 rounded-3xl blur-3xl -z-10"
         animate={{
@@ -476,13 +451,13 @@ export function MainContent() {
                   {textResult && imageResult && (
                     <button
                       onClick={() => setActiveResultIndex(0)}
+                      aria-label="Show comprehensive analysis"
                       className={clsx(
                         "w-2 h-2 rounded-full transition-all duration-200",
                         activeResultIndex === 0
                           ? "bg-blue-500 scale-125"
                           : "bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500"
                       )}
-                      aria-label="Show comprehensive analysis"
                     />
                   )}
                   
@@ -490,13 +465,13 @@ export function MainContent() {
                   {textResult && (
                     <button
                       onClick={() => setActiveResultIndex(1)}
+                      aria-label="Show text analysis"
                       className={clsx(
                         "w-2 h-2 rounded-full transition-all duration-200",
                         activeResultIndex === 1
                           ? "bg-blue-500 scale-125"
                           : "bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500"
                       )}
-                      aria-label="Show text analysis"
                     />
                   )}
 
@@ -504,13 +479,13 @@ export function MainContent() {
                   {imageResult && (
                     <button
                       onClick={() => setActiveResultIndex(2)}
+                      aria-label="Show image analysis"
                       className={clsx(
                         "w-2 h-2 rounded-full transition-all duration-200",
                         activeResultIndex === 2
                           ? "bg-blue-500 scale-125"
                           : "bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500"
                       )}
-                      aria-label="Show image analysis"
                     />
                   )}
 
@@ -518,25 +493,39 @@ export function MainContent() {
                   {textResult?.type === 'url' && textResult?.urlAnalysis && (
                     <button
                       onClick={() => setActiveResultIndex(3)}
+                      aria-label="Show URL analysis"
                       className={clsx(
                         "w-2 h-2 rounded-full transition-all duration-200",
                         activeResultIndex === 3
                           ? "bg-blue-500 scale-125"
                           : "bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500"
                       )}
-                      aria-label="Show URL analysis"
                     />
                   )}
                 </div>
 
                 {/* Results Cards */}
                 <div className="relative mt-6">
+                  <div className="flex-grow w-full" style={{ height: '1px' }}></div>
+                  
                   {/* Comprehensive Analysis Card */}
                   {textResult && imageResult && (
-                    <div className={clsx(
-                      "transition-all duration-500 absolute w-full",
-                      activeResultIndex === 0 ? "opacity-100 translate-x-0" : "opacity-0 translate-x-full pointer-events-none"
-                    )}>
+                    <div 
+                      className={clsx(
+                        "transition-all duration-500 w-full max-w-4xl mx-auto",
+                        activeResultIndex === 0 ? "opacity-100 block" : "opacity-0 hidden"
+                      )}
+                      tabIndex={activeResultIndex === 0 ? 0 : -1}
+                      onKeyDown={(e) => {
+                        if (e.key === 'ArrowRight') {
+                          e.preventDefault();
+                          navigateResults('next');
+                        } else if (e.key === 'ArrowLeft') {
+                          e.preventDefault();
+                          navigateResults('prev');
+                        }
+                      }}
+                    >
                       <ComprehensiveAnalysisCard
                         textAnalysis={textResult}
                         imageAnalysis={imageResult}
@@ -547,10 +536,22 @@ export function MainContent() {
 
                   {/* Text Analysis Card */}
                   {textResult && (
-                    <div className={clsx(
-                      "transition-all duration-500 absolute w-full",
-                      activeResultIndex === 1 ? "opacity-100 translate-x-0" : "opacity-0 translate-x-full pointer-events-none"
-                    )}>
+                    <div 
+                      className={clsx(
+                        "transition-all duration-500 w-full max-w-4xl mx-auto",
+                        activeResultIndex === 1 ? "opacity-100 block" : "opacity-0 hidden"
+                      )}
+                      tabIndex={activeResultIndex === 1 ? 0 : -1}
+                      onKeyDown={(e) => {
+                        if (e.key === 'ArrowRight') {
+                          e.preventDefault();
+                          navigateResults('next');
+                        } else if (e.key === 'ArrowLeft') {
+                          e.preventDefault();
+                          navigateResults('prev');
+                        }
+                      }}
+                    >
                       <ResultCard 
                         result={textResult} 
                         content={currentContent}
@@ -561,10 +562,22 @@ export function MainContent() {
 
                   {/* Image Analysis Card */}
                   {imageResult && (
-                    <div className={clsx(
-                      "transition-all duration-500 absolute w-full",
-                      activeResultIndex === 2 ? "opacity-100 translate-x-0" : "opacity-0 translate-x-full pointer-events-none"
-                    )}>
+                    <div 
+                      className={clsx(
+                        "transition-all duration-500 w-full max-w-4xl mx-auto",
+                        activeResultIndex === 2 ? "opacity-100 block" : "opacity-0 hidden"
+                      )}
+                      tabIndex={activeResultIndex === 2 ? 0 : -1}
+                      onKeyDown={(e) => {
+                        if (e.key === 'ArrowRight') {
+                          e.preventDefault();
+                          navigateResults('next');
+                        } else if (e.key === 'ArrowLeft') {
+                          e.preventDefault();
+                          navigateResults('prev');
+                        }
+                      }}
+                    >
                       <ImageResultCard
                         result={imageResult}
                         imageUrl={currentImageContent}
@@ -575,11 +588,27 @@ export function MainContent() {
 
                   {/* URL Analysis Card */}
                   {textResult?.type === 'url' && textResult?.urlAnalysis && (
-                    <div className={clsx(
-                      "transition-all duration-500 absolute w-full",
-                      activeResultIndex === 3 ? "opacity-100 translate-x-0" : "opacity-0 translate-x-full pointer-events-none"
-                    )}>
-                      <UrlAnalysisCard urlAnalysis={textResult.urlAnalysis} />
+                    <div 
+                      className={clsx(
+                        "transition-all duration-500 w-full max-w-4xl mx-auto",
+                        activeResultIndex === 3 ? "opacity-100 block" : "opacity-0 hidden"
+                      )}
+                      tabIndex={activeResultIndex === 3 ? 0 : -1}
+                      onKeyDown={(e) => {
+                        if (e.key === 'ArrowRight') {
+                          e.preventDefault();
+                          navigateResults('next');
+                        } else if (e.key === 'ArrowLeft') {
+                          e.preventDefault();
+                          navigateResults('prev');
+                        }
+                      }}
+                    >
+                      <UrlAnalysisCard 
+                        urlAnalysis={textResult.urlAnalysis}
+                        onNavigate={navigateResults}
+                        showNavigationHints={hasMultipleResults}
+                      />
                     </div>
                   )}
                 </div>

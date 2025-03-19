@@ -47,20 +47,15 @@ export const UrlAnalysisCard: FC<UrlAnalysisCardProps> = ({
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        drag="x"
-        dragConstraints={{ left: 0, right: 0 }}
-        dragElastic={0.2}
-        onDragEnd={handleDragEnd}
         className="w-full max-w-full mx-auto relative"
       >
         <GlassCard className="relative overflow-hidden backdrop-blur-sm">
-          <div className="absolute inset-0 bg-gradient-to-br from-white/50 to-white/30 dark:from-gray-800/50 dark:to-gray-800/30" />
-          <div className="relative p-6">
-            <div className="flex items-center justify-between mb-6">
+          <div className="p-6 space-y-6">
+            <div className="flex items-center justify-between">
               <div className="flex items-center">
                 <Globe className="w-6 h-6 mr-2 text-blue-600 dark:text-blue-400" />
                 <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100">
-                  {language === 'ml' ? 'URL വിശകലനം' : 'URL Analysis'}
+                  {language === 'ml' ? 'URL പരിശോധന' : 'URL Analysis'}
                 </h2>
               </div>
               <span className={clsx(
@@ -72,7 +67,7 @@ export const UrlAnalysisCard: FC<UrlAnalysisCardProps> = ({
               </span>
             </div>
             
-            <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-900/10 rounded-lg border border-amber-200 dark:border-amber-800/30">
+            <div className="p-4 bg-amber-50 dark:bg-amber-900/10 rounded-lg border border-amber-200 dark:border-amber-800/30">
               <div className="flex items-start">
                 <AlertTriangle className="w-5 h-5 mr-2 text-amber-600 dark:text-amber-400 mt-0.5" />
                 <p className="text-amber-700 dark:text-amber-300">
@@ -80,13 +75,6 @@ export const UrlAnalysisCard: FC<UrlAnalysisCardProps> = ({
                     ? 'URL വിശകലന വിവരങ്ങൾ ലഭ്യമല്ല' 
                     : 'URL analysis data is not available. Please try again.'}
                 </p>
-              </div>
-            </div>
-            
-            <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
-              <div className="flex items-center text-gray-500 dark:text-gray-400 text-sm">
-                <Link className="w-4 h-4 mr-2" />
-                <span className="break-all">{urlAnalysis?.url}</span>
               </div>
             </div>
           </div>
