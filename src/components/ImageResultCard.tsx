@@ -708,27 +708,8 @@ export const ImageResultCard: FC<ImageResultCardProps> = ({ result, imageUrl, ex
               )}
             </div>
           )}
-
-          {/* Confidence Score */}
-          <div className="text-sm text-center">
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 }}
-              className={clsx(
-                "inline-block px-4 py-2 bg-blue-50 dark:bg-blue-900/30 rounded-full",
-                isMalayalam && "text-base"
-              )}>
-              <span className="text-blue-700 dark:text-blue-300">
-                {language === 'ml' ? 'വിശ്വസനീയതാ സ്കോർ' : 'Reliability Score'}: {confidencePercentage}%
-              </span>
-            </motion.div>
-          </div>
         </div>
       </GlassCard>
-
-      {/* Add the ImageAnalysisSliders component */}
-      <ImageAnalysisSliders result={result} />
     </motion.div>
   );
 };

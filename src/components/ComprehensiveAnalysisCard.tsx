@@ -7,7 +7,6 @@ import { translations } from '../locales/translations';
 import { GlassCard } from './common/GlassCard';
 import clsx from 'clsx';
 import React from 'react';
-import { ImageAnalysisSliders } from './ImageAnalysisSliders';
 
 interface ComprehensiveAnalysisCardProps {
   textAnalysis?: TextAnalysisResult | null;
@@ -334,13 +333,6 @@ export const ComprehensiveAnalysisCard: FC<ComprehensiveAnalysisCardProps> = ({
               )}
             </div>
           </div>
-
-          {/* Image Analysis Sliders */}
-          {imageAnalysis && (
-            <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">
-              <ImageAnalysisSliders result={imageAnalysis} />
-            </div>
-          )}
         </div>
       </GlassCard>
     </motion.div>

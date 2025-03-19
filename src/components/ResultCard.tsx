@@ -248,18 +248,6 @@ export const ResultCard: FC<ResultCardProps> = ({
               {renderReverseSearchResults()}
             </div>
           )}
-
-          {/* Metadata Footer */}
-          {/* <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-            <div className="flex flex-wrap items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-              <div className="flex items-center space-x-1">
-                <Globe className="w-3.5 h-3.5" />
-                <span>
-                  {language === 'ml' ? 'പരിശോധിച്ച മൂലങ്ങൾ' : 'Sources checked'}: {reverseSearchResults?.length || 0}
-                </span>
-              </div>
-            </div>
-          </div> */}
         </div>
       </GlassCard>
     </motion.div>
