@@ -1,6 +1,6 @@
 import { FC, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { ShieldCheck, ShieldAlert, FileText, AlertTriangle, Search, Globe, ChevronDown, ChevronUp, ChevronRight } from 'lucide-react';
+import { ShieldCheck, ShieldAlert, FileText, AlertTriangle, Search, Globe, ChevronDown, ChevronUp, ChevronRight, AlertCircle, CheckCircle } from 'lucide-react';
 import { AnalysisResult } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
 import { translations } from '../locales/translations';
@@ -203,7 +203,11 @@ export const ResultCard: FC<ResultCardProps> = ({
               "text-lg font-semibold mb-2 text-gray-800 dark:text-gray-100 flex items-center",
               isMalayalam && "text-xl leading-relaxed"
             )}>
-              <FileText className="w-5 h-5 mr-2" />
+              {result.ISFAKE === 0 ? (
+                <CheckCircle className="w-5 h-5 mr-2 text-green-500 dark:text-green-400" />
+              ) : (
+                <AlertCircle className="w-5 h-5 mr-2 text-red-500 dark:text-red-400" />
+              )}
               {t.analysisTitle}
             </h3>
             <p className={clsx(
@@ -246,7 +250,7 @@ export const ResultCard: FC<ResultCardProps> = ({
           )}
 
           {/* Metadata Footer */}
-          <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+          {/* <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
             <div className="flex flex-wrap items-center justify-between text-xs text-gray-500 dark:text-gray-400">
               <div className="flex items-center space-x-1">
                 <Globe className="w-3.5 h-3.5" />
@@ -255,7 +259,7 @@ export const ResultCard: FC<ResultCardProps> = ({
                 </span>
               </div>
             </div>
-          </div>
+          </div> */}
         </div>
       </GlassCard>
     </motion.div>
