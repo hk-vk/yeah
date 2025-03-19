@@ -1,16 +1,16 @@
 import { FC } from 'react';
 import { motion } from 'framer-motion';
 import { ShieldCheck, ShieldAlert, AlertCircle, CheckCircle, BarChart2 } from 'lucide-react';
-import { AnalysisResult } from '../types';
+import { TextAnalysisResult, ImageAnalysisResult } from '../types/analysis';
 import { useLanguage } from '../contexts/LanguageContext';
 import { translations } from '../locales/translations';
 import { GlassCard } from './common/GlassCard';
 import clsx from 'clsx';
 
 interface ComprehensiveAnalysisCardProps {
-  textAnalysis?: AnalysisResult;
-  imageAnalysis?: AnalysisResult;
-  urlAnalysis?: AnalysisResult;
+  textAnalysis?: TextAnalysisResult | null;
+  imageAnalysis?: ImageAnalysisResult | null;
+  urlAnalysis?: TextAnalysisResult['urlAnalysis'];
 }
 
 export const ComprehensiveAnalysisCard: FC<ComprehensiveAnalysisCardProps> = ({
@@ -32,11 +32,18 @@ export const ComprehensiveAnalysisCard: FC<ComprehensiveAnalysisCardProps> = ({
       totalWeight += 0.4;
     }
     if (imageAnalysis) {
-      weightedSum += (imageAnalysis.ISFAKE === 1 ? 1 : 0) * 0.3;
+      // For image analysis, consider verdict and score
+      const isImageFake = imageAnalysis.verdict.toLowerCase().includes('fake') || 
+                         imageAnalysis.score < 0.5 ||
+                         imageAnalysis.details.ai_generated ||
+                         imageAnalysis.details.deepfake;
+      weightedSum += (isImageFake ? 1 : 0) * 0.3;
       totalWeight += 0.3;
     }
     if (urlAnalysis) {
-      weightedSum += (urlAnalysis.ISFAKE === 1 ? 1 : 0) * 0.3;
+      // For URL analysis, consider trust_score and is_trustworthy
+      const isUrlFake = !urlAnalysis.is_trustworthy || urlAnalysis.trust_score < 0.5;
+      weightedSum += (isUrlFake ? 1 : 0) * 0.3;
       totalWeight += 0.3;
     }
 
@@ -63,10 +70,26 @@ export const ComprehensiveAnalysisCard: FC<ComprehensiveAnalysisCardProps> = ({
       explanations.push(isML ? textAnalysis.EXPLANATION_ML : textAnalysis.EXPLANATION_EN);
     }
     if (imageAnalysis) {
-      explanations.push(isML ? imageAnalysis.EXPLANATION_ML : imageAnalysis.EXPLANATION_EN);
+      // For image analysis, create explanation from verdict and details
+      const imageExplanation = isML
+        ? `ചിത്രം ${imageAnalysis.verdict.toLowerCase().includes('fake') ? 'വ്യാജമാണ്' : 'യഥാർത്ഥമാണ്'}. ${
+            imageAnalysis.details.ai_generated ? 'AI ഉപയോഗിച്ച് നിർമ്മിച്ചതാണ്. ' : ''
+          }${imageAnalysis.details.deepfake ? 'ഡീപ്ഫേക്ക് സാങ്കേതികവിദ്യ ഉപയോഗിച്ചിട്ടുണ്ട്. ' : ''}`
+        : `The image appears to be ${imageAnalysis.verdict}. ${
+            imageAnalysis.details.ai_generated ? 'It was generated using AI. ' : ''
+          }${imageAnalysis.details.deepfake ? 'Deepfake technology was detected. ' : ''}`;
+      explanations.push(imageExplanation);
     }
     if (urlAnalysis) {
-      explanations.push(isML ? urlAnalysis.EXPLANATION_ML : urlAnalysis.EXPLANATION_EN);
+      // For URL analysis, create explanation from trust reasons and final decision
+      const urlExplanation = isML
+        ? `URL ${urlAnalysis.is_trustworthy ? 'വിശ്വസനീയമാണ്' : 'വിശ്വസനീയമല്ല'}. ${
+            urlAnalysis.trust_reasons.join('. ')
+          }`
+        : `The URL is ${urlAnalysis.is_trustworthy ? 'trustworthy' : 'not trustworthy'}. ${
+            urlAnalysis.trust_reasons.join('. ')
+          }`;
+      explanations.push(urlExplanation);
     }
 
     return explanations.join(' ');
@@ -178,9 +201,9 @@ export const ComprehensiveAnalysisCard: FC<ComprehensiveAnalysisCardProps> = ({
                   </span>
                   <span className={clsx(
                     "font-medium",
-                    imageAnalysis.ISFAKE === 0 ? "text-green-500" : "text-red-500"
+                    !imageAnalysis.verdict.toLowerCase().includes('fake') ? "text-green-500" : "text-red-500"
                   )}>
-                    {imageAnalysis.ISFAKE === 0 ? t.reliable : t.suspicious} (30%)
+                    {!imageAnalysis.verdict.toLowerCase().includes('fake') ? t.reliable : t.suspicious} (30%)
                   </span>
                 </div>
               )}
@@ -191,9 +214,9 @@ export const ComprehensiveAnalysisCard: FC<ComprehensiveAnalysisCardProps> = ({
                   </span>
                   <span className={clsx(
                     "font-medium",
-                    urlAnalysis.ISFAKE === 0 ? "text-green-500" : "text-red-500"
+                    urlAnalysis.is_trustworthy ? "text-green-500" : "text-red-500"
                   )}>
-                    {urlAnalysis.ISFAKE === 0 ? t.reliable : t.suspicious} (30%)
+                    {urlAnalysis.is_trustworthy ? t.reliable : t.suspicious} (30%)
                   </span>
                 </div>
               )}

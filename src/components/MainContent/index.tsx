@@ -4,6 +4,7 @@ import { InputSection } from '../InputSection';
 import { ResultCard } from '../ResultCard';
 import { ImageResultCard } from '../ImageResultCard';
 import { UrlAnalysisCard } from '../UrlAnalysisCard';
+import { ComprehensiveAnalysisCard } from '../ComprehensiveAnalysisCard';
 import { FeedbackSection } from '../FeedbackSection';
 import { LoadingSpinner } from './LoadingSpinner';
 import { AnalysisHistory } from '../AnalysisHistory';
@@ -310,6 +311,17 @@ export function MainContent() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [hasMultipleResults, activeResultIndex]);
 
+  // Calculate total number of results
+  const getTotalResults = () => {
+    let count = 0;
+    if (textResult) count++;
+    if (imageResult) count++;
+    if (textResult?.type === 'url' && textResult?.urlAnalysis) count++;
+    // Add 1 for ComprehensiveAnalysisCard
+    if (count > 1) count++;
+    return count;
+  };
+
   return (
     <div className="relative space-y-8 max-w-4xl mx-auto">
       <motion.div
@@ -407,9 +419,33 @@ export function MainContent() {
                        ? 'ഇടത്തേക്കും വലത്തേക്കും അമ്പ് കീകൾ ഉപയോഗിച്ച് ഫലങ്ങൾ മാറ്റുക' 
                        : 'Use left and right arrow keys to switch between results'
                    }>
+                {/* Comprehensive Analysis Card */}
                 <div className={clsx(
                   "transition-opacity duration-300",
                   activeResultIndex === 0 ? "opacity-100" : "opacity-0 hidden"
+                )}>
+                  <div
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'ArrowRight') {
+                        e.preventDefault();
+                        navigateResults('next');
+                      }
+                    }}
+                    className="outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 rounded-lg"
+                  >
+                    <ComprehensiveAnalysisCard
+                      textAnalysis={textResult}
+                      imageAnalysis={imageResult || undefined}
+                      urlAnalysis={textResult?.type === 'url' ? textResult.urlAnalysis : undefined}
+                    />
+                  </div>
+                </div>
+
+                {/* Text Analysis Card */}
+                <div className={clsx(
+                  "transition-opacity duration-300",
+                  activeResultIndex === 1 ? "opacity-100" : "opacity-0 hidden"
                 )}>
                   <div
                     ref={cardRefs.text}
@@ -418,6 +454,9 @@ export function MainContent() {
                       if (e.key === 'ArrowRight') {
                         e.preventDefault();
                         navigateResults('next');
+                      } else if (e.key === 'ArrowLeft') {
+                        e.preventDefault();
+                        navigateResults('prev');
                       }
                     }}
                     className="outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 rounded-lg"
@@ -429,11 +468,12 @@ export function MainContent() {
                     />
                   </div>
                 </div>
-                
-                {textResult?.type === 'url' && textResult?.urlAnalysis ? (
+
+                {/* URL Analysis Card */}
+                {textResult?.type === 'url' && textResult?.urlAnalysis && (
                   <div className={clsx(
                     "transition-opacity duration-300",
-                    activeResultIndex === 1 ? "opacity-100" : "opacity-0 hidden"
+                    activeResultIndex === 2 ? "opacity-100" : "opacity-0 hidden"
                   )}>
                     <div
                       ref={cardRefs.url}
@@ -442,20 +482,26 @@ export function MainContent() {
                         if (e.key === 'ArrowLeft') {
                           e.preventDefault();
                           navigateResults('prev');
+                        } else if (e.key === 'ArrowRight' && imageResult) {
+                          e.preventDefault();
+                          navigateResults('next');
                         }
                       }}
                       className="outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 rounded-lg"
                     >
                       <UrlAnalysisCard 
                         result={textResult} 
-                        url={textResult.urlAnalysis.url || textResult.input?.url || currentContent}
+                        url={textResult.urlAnalysis?.url || textResult.input?.url || currentContent}
                       />
                     </div>
                   </div>
-                ) : (
+                )}
+
+                {/* Image Analysis Card */}
+                {imageResult && (
                   <div className={clsx(
                     "transition-opacity duration-300",
-                    activeResultIndex === 1 ? "opacity-100" : "opacity-0 hidden"
+                    activeResultIndex === (textResult?.type === 'url' ? 3 : 2) ? "opacity-100" : "opacity-0 hidden"
                   )}>
                     <div
                       ref={cardRefs.image}
@@ -468,90 +514,30 @@ export function MainContent() {
                       }}
                       className="outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 rounded-lg"
                     >
-                      {imageResult && (
-                        <ImageResultCard 
-                          result={imageResult} 
-                          imageUrl={currentImageContent} 
-                          extractedText={extractedText}
-                        />
-                      )}
+                      <ImageResultCard 
+                        result={imageResult} 
+                        imageUrl={currentImageContent} 
+                        extractedText={extractedText}
+                      />
                     </div>
                   </div>
                 )}
 
-                {/* Navigation Controls */}
-                <div className="flex flex-col items-center mt-8 space-y-4">
-                  <div className="flex justify-center items-center space-x-4">
+                {/* Navigation Dots */}
+                <div className="flex justify-center items-center mt-8 space-x-2">
+                  {Array.from({ length: getTotalResults() }).map((_, index) => (
                     <button
-                      onClick={() => navigateResults('prev')}
-                      disabled={activeResultIndex === 0}
-                      className={`p-2 rounded-full flex items-center justify-center ${
-                        activeResultIndex === 0 
-                          ? 'text-gray-400 cursor-not-allowed' 
-                          : 'text-blue-500 hover:bg-blue-50'
-                      }`}
-                      aria-label={language === 'ml' ? 'മുൻപത്തെ ഫലം' : 'Previous result'}
-                    >
-                      <ChevronLeft className="w-6 h-6" />
-                    </button>
-                    
-                    <div className="flex space-x-3">
-                      <button
-                        onClick={() => setActiveResultIndex(0)}
-                        className={`w-3 h-3 rounded-full transition-colors ${
-                          activeResultIndex === 0 
-                            ? 'bg-blue-500' 
-                            : 'bg-gray-300 hover:bg-gray-400'
-                        }`}
-                        aria-label={
-                          language === 'ml' 
-                            ? 'വാചക വിശകലനം കാണിക്കുക' 
-                            : 'Show text analysis'
-                        }
-                      />
-                      <button
-                        onClick={() => setActiveResultIndex(1)}
-                        className={`w-3 h-3 rounded-full transition-colors ${
-                          activeResultIndex === 1 
-                            ? 'bg-blue-500' 
-                            : 'bg-gray-300 hover:bg-gray-400'
-                        }`}
-                        aria-label={
-                          language === 'ml' 
-                            ? textResult?.type === 'url' && textResult?.urlAnalysis 
-                              ? 'URL വിശകലനം കാണിക്കുക' 
-                              : 'ചിത്ര വിശകലനം കാണിക്കുക'
-                            : textResult?.type === 'url' && textResult?.urlAnalysis
-                              ? 'Show URL analysis'
-                              : 'Show image analysis'
-                        }
-                      />
-                    </div>
-                    
-                    <button
-                      onClick={() => navigateResults('next')}
-                      disabled={activeResultIndex === 1}
-                      className={`p-2 rounded-full flex items-center justify-center ${
-                        activeResultIndex === 1 
-                          ? 'text-gray-400 cursor-not-allowed' 
-                          : 'text-blue-500 hover:bg-blue-50'
-                      }`}
-                      aria-label={language === 'ml' ? 'അടുത്ത ഫലം' : 'Next result'}
-                    >
-                      <ChevronRight className="w-6 h-6" />
-                    </button>
-                  </div>
-                  
-                  <p className="text-sm text-gray-500 dark:text-gray-400 text-center mt-2">
-                    {language === 'ml' 
-                      ? 'ഇടത്തേക്കും വലത്തേക്കുമുള്ള അമ്പ് കീകൾ ഉപയോഗിച്ച് ഫലങ്ങൾക്കിടയിൽ മാറുക' 
-                      : 'Use left and right arrow keys to navigate between results'}
-                  </p>
-                </div>
-                
-                {/* Feedback Section - Add onFeedback prop */}
-                <div className="mt-12">
-                  <FeedbackSection onFeedback={handleFeedback} />
+                      key={index}
+                      onClick={() => setActiveResultIndex(index)}
+                      className={clsx(
+                        "w-2 h-2 rounded-full transition-all duration-300",
+                        activeResultIndex === index
+                          ? "bg-blue-500 w-4"
+                          : "bg-gray-300 dark:bg-gray-600"
+                      )}
+                      aria-label={`Go to result ${index + 1}`}
+                    />
+                  ))}
                 </div>
               </div>
             )}
