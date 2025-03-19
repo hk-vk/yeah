@@ -50,58 +50,63 @@ export const exaService = {
         new URL(url);
       } catch (e) {
         console.error('Invalid URL format:', e);
-        throw new Error('Invalid URL format');
+        throw new Error('Invalid URL format: Please make sure your URL includes http:// or https://');
       }
 
       // Call Exa API to get contents
-      const result = await exa.getContents(
-        [url],
-        {
-          text: true
-        }
-      ) as ExaApiResponse;
-      
-      console.log('Exa API response:', result);
-
-      // Check if we have results
-      if (result?.results && result.results.length > 0) {
-        const content = result.results[0];
+      try {
+        const result = await exa.getContents(
+          [url],
+          {
+            text: true
+          }
+        ) as ExaApiResponse;
         
-        // Log extracted content for debugging
-        console.log('Extracted content:', {
-          hasText: !!content.text,
-          textLength: content.text?.length,
-          hasImage: !!content.image,
-          hasTitle: !!content.title,
-          hasAuthor: !!content.author,
-          hasFavicon: !!content.favicon
-        });
+        console.log('Exa API response:', result);
 
-        // If we have text content, return it
-        if (content.text && content.text.trim().length > 0) {
-          return {
-            text: content.text,
-            image: content.image || undefined,
-            title: content.title || undefined,
-            url: content.url || url,
-            publishedDate: content.publishedDate || undefined,
-            author: content.author || undefined,
-            favicon: content.favicon || undefined
-          };
-        }
+        // Check if we have results
+        if (result?.results && result.results.length > 0) {
+          const content = result.results[0];
+          
+          // Log extracted content for debugging
+          console.log('Extracted content:', {
+            hasText: !!content.text,
+            textLength: content.text?.length,
+            hasImage: !!content.image,
+            hasTitle: !!content.title,
+            hasAuthor: !!content.author,
+            hasFavicon: !!content.favicon
+          });
 
-        // If no text content but we have title, use that as minimum content
-        if (content.title) {
-          return {
-            text: content.title,
-            image: content.image || undefined,
-            title: content.title,
-            url: content.url || url,
-            publishedDate: content.publishedDate || undefined,
-            author: content.author || undefined,
-            favicon: content.favicon || undefined
-          };
+          // If we have text content, return it
+          if (content.text && content.text.trim().length > 0) {
+            return {
+              text: content.text,
+              image: content.image || undefined,
+              title: content.title || undefined,
+              url: content.url || url,
+              publishedDate: content.publishedDate || undefined,
+              author: content.author || undefined,
+              favicon: content.favicon || undefined
+            };
+          }
+
+          // If no text content but we have title, use that as minimum content
+          if (content.title) {
+            return {
+              text: content.title,
+              image: content.image || undefined,
+              title: content.title,
+              url: content.url || url,
+              publishedDate: content.publishedDate || undefined,
+              author: content.author || undefined,
+              favicon: content.favicon || undefined
+            };
+          }
         }
+      } catch (exaError) {
+        console.error('Exa API error:', exaError);
+        throw new Error(`Request failed with status 400. Sorry, we had trouble finding contents for the given URL.`);
       }
       
       // If we couldn't extract content, try to fetch it directly

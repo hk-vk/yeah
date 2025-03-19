@@ -65,6 +65,17 @@ export const DomainCredibilityAnalyzer: React.FC<DomainCredibilityAnalyzerProps>
     headers: string[];
     sampleRows: any[];
   } | null>(null);
+  
+  // Add state for the new domain form
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newDomainEntry, setNewDomainEntry] = useState({
+    domain: '',
+    real: 0,
+    total: 0
+  });
+  const [newUrl, setNewUrl] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   // Function to extract domain from URL
   const extractDomain = (url: string): string => {
@@ -484,20 +495,115 @@ export const DomainCredibilityAnalyzer: React.FC<DomainCredibilityAnalyzerProps>
     );
   };
 
-  if (isLoading) {
+  // Add a function to handle form submission
+  const handleAddDomain = async () => {
+    if (!newUrl) {
+      setSubmitError("Please enter a URL");
+      return;
+    }
+
+    setIsSubmitting(true);
+    setSubmitError(null);
+    
+    try {
+      // Call the analyze service to get article data
+      // This would normally use your @exaservice
+      // Replace this with your actual service call
+      const response = await fetch(`/api/analyze?url=${encodeURIComponent(newUrl)}`);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to analyze URL: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      
+      // Extract domain from the URL
+      const domain = extractDomain(newUrl);
+      
+      // Determine if it's real or fake based on the analysis
+      // This is a placeholder - replace with your actual logic
+      const isReal = data.verdict === 'REAL' || data.score > 0.5;
+      
+      // Update existing domain or add new one
+      if (credibilityData) {
+        const existingDomainIndex = credibilityData.domains.findIndex(d => d.domain === domain);
+        
+        if (existingDomainIndex >= 0) {
+          // Update existing domain stats
+          const updatedDomains = [...credibilityData.domains];
+          const existingDomain = updatedDomains[existingDomainIndex];
+          
+          const updatedDomain = {
+            ...existingDomain,
+            total: existingDomain.total + 1,
+            real: existingDomain.real + (isReal ? 1 : 0),
+            realPercentage: ((existingDomain.real + (isReal ? 1 : 0)) / (existingDomain.total + 1)) * 100,
+            confidenceScore: calculateConfidenceScore(existingDomain.total + 1)
+          };
+          
+          // Update credibility rating
+          updatedDomain.credibilityRating = getCredibilityRating(
+            updatedDomain.realPercentage, 
+            updatedDomain.confidenceScore
+          );
+          
+          updatedDomains[existingDomainIndex] = updatedDomain;
+          
+          setCredibilityData({
+            ...credibilityData,
+            domains: updatedDomains,
+            totalArticles: credibilityData.totalArticles + 1,
+            realNews: credibilityData.realNews + (isReal ? 1 : 0),
+            fakeNews: credibilityData.fakeNews + (isReal ? 0 : 1)
+          });
+        } else {
+          // Add new domain
+          const newDomain: DomainStats = {
+            domain,
+            total: 1,
+            real: isReal ? 1 : 0,
+            realPercentage: isReal ? 100 : 0,
+            confidenceScore: calculateConfidenceScore(1),
+            credibilityRating: getCredibilityRating(isReal ? 100 : 0, calculateConfidenceScore(1))
+          };
+          
+          setCredibilityData({
+            ...credibilityData,
+            domains: [...credibilityData.domains, newDomain],
+            totalArticles: credibilityData.totalArticles + 1,
+            realNews: credibilityData.realNews + (isReal ? 1 : 0),
+            fakeNews: credibilityData.fakeNews + (isReal ? 0 : 1)
+          });
+        }
+      }
+      
+      // Reset form
+      setNewUrl('');
+      setShowAddForm(false);
+    } catch (error) {
+      setSubmitError(`Error analyzing URL: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (error) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
-        <span className="ml-2 text-gray-700 dark:text-gray-300">Analyzing domain credibility...</span>
+      <div className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 p-4 rounded-lg flex items-start">
+        <AlertTriangle className="w-5 h-5 mr-3 mt-0.5 flex-shrink-0" />
+        <div>
+          <h3 className="font-medium">Error Loading Data</h3>
+          <p className="mt-1 text-sm">{error}</p>
+        </div>
       </div>
     );
   }
 
-  if (error) {
+  if (isLoading) {
     return (
-      <div className="flex items-center gap-2 text-red-500 bg-red-50 dark:bg-red-900/20 p-4 rounded-lg">
-        <AlertTriangle className="w-5 h-5" />
-        <p>{error}</p>
+      <div className="flex justify-center items-center h-40">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+        <span className="ml-2 text-gray-700 dark:text-gray-300">Loading credibility data...</span>
       </div>
     );
   }
@@ -513,166 +619,166 @@ export const DomainCredibilityAnalyzer: React.FC<DomainCredibilityAnalyzerProps>
 
   return (
     <div className="space-y-6">
-      {/* Overall Statistics */}
-      <Card className="p-6">
-        <h3 className="text-lg font-semibold mb-4">Dataset Overview</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
-            <p className="text-sm text-gray-600 dark:text-gray-400">Total Articles</p>
-            <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-              {credibilityData.totalArticles}
-            </p>
-          </div>
-          <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
-            <p className="text-sm text-gray-600 dark:text-gray-400">Real News</p>
-            <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-              {credibilityData.realNews}
-              <span className="text-sm ml-1">
-                ({((credibilityData.realNews / credibilityData.totalArticles) * 100).toFixed(1)}%)
-              </span>
-            </p>
-          </div>
-          <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-lg">
-            <p className="text-sm text-gray-600 dark:text-gray-400">Fake News</p>
-            <p className="text-2xl font-bold text-red-600 dark:text-red-400">
-              {credibilityData.fakeNews}
-              <span className="text-sm ml-1">
-                ({((credibilityData.fakeNews / credibilityData.totalArticles) * 100).toFixed(1)}%)
-              </span>
-            </p>
+      {/* Summary Card */}
+      <Card>
+        <div className="p-6">
+          <h3 className="text-xl font-semibold mb-4">Dataset Summary</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg">
+              <p className="text-sm text-blue-700 dark:text-blue-300">Total Articles</p>
+              <p className="text-2xl font-bold text-blue-800 dark:text-blue-200">{credibilityData.totalArticles.toLocaleString()}</p>
+            </div>
+            <div className="bg-green-50 dark:bg-green-900/30 p-4 rounded-lg">
+              <p className="text-sm text-green-700 dark:text-green-300">Real News</p>
+              <p className="text-2xl font-bold text-green-800 dark:text-green-200">
+                {credibilityData.realNews.toLocaleString()} 
+                <span className="text-sm font-normal ml-1">
+                  ({((credibilityData.realNews / credibilityData.totalArticles) * 100).toFixed(1)}%)
+                </span>
+              </p>
+            </div>
+            <div className="bg-red-50 dark:bg-red-900/30 p-4 rounded-lg">
+              <p className="text-sm text-red-700 dark:text-red-300">Fake News</p>
+              <p className="text-2xl font-bold text-red-800 dark:text-red-200">
+                {credibilityData.fakeNews.toLocaleString()}
+                <span className="text-sm font-normal ml-1">
+                  ({((credibilityData.fakeNews / credibilityData.totalArticles) * 100).toFixed(1)}%)
+                </span>
+              </p>
+            </div>
           </div>
         </div>
       </Card>
-
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Top 10 Most Credible Domains */}
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-4">Top 10 Most Credible Domains</h3>
-          {topCredibleDomainsChart && (
-            <Bar data={topCredibleDomainsChart} options={chartOptions} />
-          )}
-        </Card>
-
-        {/* Top 10 Least Credible Domains */}
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-4">Top 10 Least Credible Domains</h3>
-          {leastCredibleDomainsChart && (
-            <Bar data={leastCredibleDomainsChart} options={chartOptions} />
-          )}
-        </Card>
-      </div>
-
-      {/* Domain Credibility Table */}
-      <Card className="p-6">
-        <h3 className="text-lg font-semibold mb-4">Domain Credibility Analysis</h3>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead className="bg-gray-50 dark:bg-gray-800">
-              <tr>
-                <th 
-                  scope="col" 
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
-                  onClick={() => handleSort('domain')}
-                >
-                  Domain
-                  {sortConfig.key === 'domain' && (
-                    <span className="ml-1">{sortConfig.direction === 'ascending' ? '↑' : '↓'}</span>
-                  )}
-                </th>
-                <th 
-                  scope="col" 
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
-                  onClick={() => handleSort('realPercentage')}
-                >
-                  Credibility Score
-                  {sortConfig.key === 'realPercentage' && (
-                    <span className="ml-1">{sortConfig.direction === 'ascending' ? '↑' : '↓'}</span>
-                  )}
-                </th>
-                <th 
-                  scope="col" 
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
-                  onClick={() => handleSort('credibilityRating')}
-                >
-                  Rating
-                  {sortConfig.key === 'credibilityRating' && (
-                    <span className="ml-1">{sortConfig.direction === 'ascending' ? '↑' : '↓'}</span>
-                  )}
-                </th>
-                <th 
-                  scope="col" 
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
-                  onClick={() => handleSort('total')}
-                >
-                  Articles
-                  {sortConfig.key === 'total' && (
-                    <span className="ml-1">{sortConfig.direction === 'ascending' ? '↑' : '↓'}</span>
-                  )}
-                </th>
-                <th 
-                  scope="col" 
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
-                  onClick={() => handleSort('confidenceScore')}
-                >
-                  Confidence
-                  {sortConfig.key === 'confidenceScore' && (
-                    <span className="ml-1">{sortConfig.direction === 'ascending' ? '↑' : '↓'}</span>
-                  )}
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
-              {sortedDomains.map((domain) => (
-                <tr key={domain.domain} className="hover:bg-gray-50 dark:hover:bg-gray-800">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                    {domain.domain}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="w-24 bg-gray-200 dark:bg-gray-700 rounded-full h-2 mr-2">
-                        <div
-                          className={clsx(
-                            "h-2 rounded-full",
-                            domain.realPercentage >= 90 ? "bg-green-500" :
-                            domain.realPercentage >= 70 ? "bg-blue-500" :
-                            domain.realPercentage >= 50 ? "bg-yellow-500" :
-                            domain.realPercentage >= 30 ? "bg-orange-500" :
-                            "bg-red-500"
-                          )}
-                          style={{ width: `${domain.realPercentage}%` }}
-                        />
-                      </div>
-                      <span className={clsx(
-                        "text-sm font-medium",
-                        domain.realPercentage >= 90 ? "text-green-600 dark:text-green-400" :
-                        domain.realPercentage >= 70 ? "text-blue-600 dark:text-blue-400" :
-                        domain.realPercentage >= 50 ? "text-yellow-600 dark:text-yellow-400" :
-                        domain.realPercentage >= 30 ? "text-orange-600 dark:text-orange-400" :
-                        "text-red-600 dark:text-red-400"
-                      )}>
-                        {domain.realPercentage.toFixed(2)}%
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    <span className={clsx(
-                      "px-2 py-1 rounded-full text-xs font-medium",
-                      getCredibilityColorClass(domain.credibilityRating)
-                    )}>
-                      {domain.credibilityRating}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                    {domain.total} ({domain.real} real, {domain.total - domain.real} fake)
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                    {(domain.confidenceScore * 100).toFixed(0)}%
-                  </td>
+      
+      {/* Domain Rankings */}
+      <Card>
+        <div className="p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-xl font-semibold">Domain Credibility Rankings</h3>
+            <button
+              onClick={() => setShowAddForm(true)}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md flex items-center"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
+              </svg>
+              Add New
+            </button>
+          </div>
+          
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+            The table below shows all domains in the dataset with at least 2 articles. 
+            Click on column headers to sort the table.
+          </p>
+          
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead className="bg-gray-50 dark:bg-gray-800">
+                <tr>
+                  <th 
+                    scope="col" 
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
+                    onClick={() => handleSort('domain')}
+                  >
+                    Domain
+                    {sortConfig.key === 'domain' && (
+                      <span className="ml-1">{sortConfig.direction === 'ascending' ? '↑' : '↓'}</span>
+                    )}
+                  </th>
+                  <th 
+                    scope="col" 
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
+                    onClick={() => handleSort('realPercentage')}
+                  >
+                    Credibility Score
+                    {sortConfig.key === 'realPercentage' && (
+                      <span className="ml-1">{sortConfig.direction === 'ascending' ? '↑' : '↓'}</span>
+                    )}
+                  </th>
+                  <th 
+                    scope="col" 
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
+                    onClick={() => handleSort('credibilityRating')}
+                  >
+                    Rating
+                    {sortConfig.key === 'credibilityRating' && (
+                      <span className="ml-1">{sortConfig.direction === 'ascending' ? '↑' : '↓'}</span>
+                    )}
+                  </th>
+                  <th 
+                    scope="col" 
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
+                    onClick={() => handleSort('total')}
+                  >
+                    Articles
+                    {sortConfig.key === 'total' && (
+                      <span className="ml-1">{sortConfig.direction === 'ascending' ? '↑' : '↓'}</span>
+                    )}
+                  </th>
+                  <th 
+                    scope="col" 
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
+                    onClick={() => handleSort('confidenceScore')}
+                  >
+                    Confidence
+                    {sortConfig.key === 'confidenceScore' && (
+                      <span className="ml-1">{sortConfig.direction === 'ascending' ? '↑' : '↓'}</span>
+                    )}
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+                {sortedDomains.map((domain) => (
+                  <tr key={domain.domain} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                      {domain.domain}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className="w-24 bg-gray-200 dark:bg-gray-700 rounded-full h-2 mr-2">
+                          <div
+                            className={clsx(
+                              "h-2 rounded-full",
+                              domain.realPercentage >= 90 ? "bg-green-500" :
+                              domain.realPercentage >= 70 ? "bg-blue-500" :
+                              domain.realPercentage >= 50 ? "bg-yellow-500" :
+                              domain.realPercentage >= 30 ? "bg-orange-500" :
+                              "bg-red-500"
+                            )}
+                            style={{ width: `${domain.realPercentage}%` }}
+                          />
+                        </div>
+                        <span className={clsx(
+                          "text-sm font-medium",
+                          domain.realPercentage >= 90 ? "text-green-600 dark:text-green-400" :
+                          domain.realPercentage >= 70 ? "text-blue-600 dark:text-blue-400" :
+                          domain.realPercentage >= 50 ? "text-yellow-600 dark:text-yellow-400" :
+                          domain.realPercentage >= 30 ? "text-orange-600 dark:text-orange-400" :
+                          "text-red-600 dark:text-red-400"
+                        )}>
+                          {domain.realPercentage.toFixed(2)}%
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <span className={clsx(
+                        "px-2 py-1 rounded-full text-xs font-medium",
+                        getCredibilityColorClass(domain.credibilityRating)
+                      )}>
+                        {domain.credibilityRating}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                      {domain.total} ({domain.real} real, {domain.total - domain.real} fake)
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                      {(domain.confidenceScore * 100).toFixed(0)}%
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </Card>
 
@@ -709,6 +815,64 @@ export const DomainCredibilityAnalyzer: React.FC<DomainCredibilityAnalyzerProps>
           </ul>
         </div>
       </Card>
+
+      {/* Add Domain Form Modal */}
+      {showAddForm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold mb-4">Add New URL</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  URL
+                </label>
+                <input
+                  type="text"
+                  value={newUrl}
+                  onChange={e => setNewUrl(e.target.value)}
+                  placeholder="https://example.com"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={isSubmitting}
+                />
+              </div>
+              
+              {submitError && (
+                <div className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 p-3 rounded-md text-sm">
+                  <p>{submitError}</p>
+                </div>
+              )}
+              
+              <div className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                <p>Enter a news article URL to automatically analyze and add to the database.</p>
+              </div>
+              
+              <div className="flex justify-end space-x-3 mt-6">
+                <button
+                  onClick={() => setShowAddForm(false)}
+                  className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700"
+                  disabled={isSubmitting}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleAddDomain}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center"
+                  disabled={!newUrl || isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Analyzing...
+                    </>
+                  ) : (
+                    'Add URL'
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

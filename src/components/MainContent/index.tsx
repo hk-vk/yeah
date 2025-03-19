@@ -28,6 +28,16 @@ function isImageAnalysisResult(result: AnalysisResult): result is ImageAnalysisR
   return 'details' in result && 'type' in result;
 }
 
+function hasUrlError(result: any): result is { error: { type: string; message: string } } {
+  return result && 
+         typeof result === 'object' && 
+         'error' in result && 
+         typeof result.error === 'object' && 
+         result.error !== null &&
+         'type' in result.error &&
+         'message' in result.error;
+}
+
 export function MainContent() {
   const [textResult, setTextResult] = useState<TextAnalysisResult | null>(null);
   const [imageResult, setImageResult] = useState<ImageAnalysisResult | null>(null);
@@ -72,6 +82,23 @@ export function MainContent() {
       if (type === 'url' && processedContent) {
         try {
           const result = await analyzeService.analyzeUrl(processedContent, user?.id);
+          
+          // Check if this is a mock result with error information
+          if (hasUrlError(result) && result.error.type === 'URL_ERROR') {
+            // Handle it as an error by showing the URL error card
+            setUrlError({
+              message: result.error.message || 'Failed to analyze URL',
+              url: processedContent
+            });
+            
+            // Clear any text or image results
+            setTextResult(null);
+            setImageResult(null);
+            setIsAnalyzing(false);
+            return;
+          }
+          
+          // Successful URL analysis
           if (isTextAnalysisResult(result)) {
             setTextResult({
               ...result,
@@ -97,13 +124,35 @@ export function MainContent() {
         } catch (error: any) {
           console.error('URL analysis failed:', error);
           
-          // Set URL error state
+          // Set URL error state with clear message
+          let errorMessage = '';
+          
+          // Extract error message based on available data
+          if (typeof error === 'string') {
+            errorMessage = error;
+          } else if (error.message) {
+            errorMessage = error.message;
+          } else {
+            errorMessage = 'An unknown error occurred while analyzing the URL';
+          }
+          
+          // Check if it's a specific error format that includes status code
+          if (errorMessage.includes('status 400')) {
+            errorMessage = 'Request failed with status 400. Sorry, we had trouble finding contents for the given URL.';
+          } else if (errorMessage.includes('status 404')) {
+            errorMessage = 'Request failed with status 404. The URL could not be found. Please check if the URL is correct.';
+          } else if (errorMessage.includes('status 500')) {
+            errorMessage = 'Request failed with status 500. The server encountered an internal error. Please try again later.';
+          }
+          
           setUrlError({
-            message: error.message || (language === 'ml' 
-              ? 'പിഴവ്: മറ്റൊരു URL ഉപയോഗിച്ച് വീണ്ടും ശ്രമിക്കുക'
-              : 'Error: Please try again with a different URL'),
+            message: errorMessage,
             url: processedContent
           });
+          
+          // Make sure we don't have any text or image results that could trigger other UI components
+          setTextResult(null);
+          setImageResult(null);
         }
         setIsAnalyzing(false);
         return;
@@ -419,13 +468,18 @@ export function MainContent() {
           <>
             {/* URL Error State */}
             {urlError && (
-              <div className="min-h-[400px] mb-24">
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="min-h-[400px] mb-24"
+              >
                 <UrlErrorCard 
                   errorMessage={urlError.message} 
                   url={urlError.url}
                   onRetry={handleRetryUrl}
                 />
-              </div>
+              </motion.div>
             )}
             
             {/* TEXT-ONLY RESULT */}

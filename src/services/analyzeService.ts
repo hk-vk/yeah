@@ -366,11 +366,15 @@ export const analyzeService = {
             // Return a mock result if backend is unavailable
             const errorMessage = error instanceof Error ? error.message : String(error);
             const mockResult = {
-                CONFIDENCE: 0.7,
-                EXPLANATION_EN: `Unable to analyze URL content due to an error: ${errorMessage}`,
-                EXPLANATION_ML: `പിശക് കാരണം URL ഉള്ളടക്കം വിശകലനം ചെയ്യാൻ കഴിയുന്നില്ല: ${errorMessage}`,
-                ISFAKE: 0,
-                input: { url }
+                CONFIDENCE: 0.5,
+                EXPLANATION_EN: `Invalid URL or URL cannot be accessed. Please check if the URL is correct and accessible. Error: ${errorMessage}`,
+                EXPLANATION_ML: `അസാധുവായ URL അല്ലെങ്കിൽ URL ആക്സസ് ചെയ്യാൻ കഴിയില്ല. URL ശരിയാണോ ആക്സസ് ചെയ്യാൻ കഴിയുമോ എന്ന് പരിശോധിക്കുക. പിശക്: ${errorMessage}`,
+                ISFAKE: 1,
+                input: { url },
+                error: {
+                    type: 'URL_ERROR',
+                    message: errorMessage
+                }
             };
             
             return {

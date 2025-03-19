@@ -150,29 +150,29 @@ export const ResultCard: FC<ResultCardProps> = ({
           {/* Main Analysis Result */}
           <div className="flex items-center justify-center mb-6">
             {result.ISFAKE === 0 ? (
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                className="flex items-center text-green-500 dark:text-green-400"
-              >
-                <ShieldCheck className="w-8 h-8 mr-2" />
-                <span className={clsx(
-                  "text-xl font-semibold",
-                  isMalayalam && "text-2xl leading-relaxed"
-                )}>{t.reliable}</span>
-              </motion.div>
-            ) : (
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  className="flex items-center text-green-500 dark:text-green-400"
+                >
+                  <ShieldCheck className="w-8 h-8 mr-2" />
+                  <span className={clsx(
+                    "text-xl font-semibold",
+                    isMalayalam && "text-2xl leading-relaxed"
+                  )}>{t.reliable}</span>
+                </motion.div>
+              ) : (
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
                 className="flex items-center text-red-500 dark:text-red-400"
-              >
-                <ShieldAlert className="w-8 h-8 mr-2" />
-                <span className={clsx(
-                  "text-xl font-semibold",
-                  isMalayalam && "text-2xl leading-relaxed"
-                )}>{t.suspicious}</span>
-              </motion.div>
+                >
+                  <ShieldAlert className="w-8 h-8 mr-2" />
+                  <span className={clsx(
+                    "text-xl font-semibold",
+                    isMalayalam && "text-2xl leading-relaxed"
+                  )}>{t.suspicious}</span>
+                </motion.div>
             )}
           </div>
 
@@ -225,7 +225,7 @@ export const ResultCard: FC<ResultCardProps> = ({
                 )}>
                   {reverseSearchResults[0].explanation_ml}
                 </p>
-                <p className={clsx(
+              <p className={clsx(
                   "text-gray-600 dark:text-gray-300",
                   "text-sm leading-relaxed"
                 )}>
@@ -233,8 +233,8 @@ export const ResultCard: FC<ResultCardProps> = ({
                 </p>
               </div>
             )}
-          </div>
-
+                </div>
+                
           {/* Reverse Search Results */}
           {reverseSearchResults && reverseSearchResults.length > 0 && (
             <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
