@@ -8,15 +8,23 @@ import { GlassCard } from './common/GlassCard';
 import clsx from 'clsx';
 
 interface UrlAnalysisCardProps {
-  result: TextAnalysisResult;
-  url: string;
+  urlAnalysis: {
+    url: string;
+    prediction: string;
+    prediction_probabilities: number[];
+    google_safe_browsing_flag: boolean;
+    trusted: boolean;
+    trust_score: number;
+    is_trustworthy: boolean;
+    trust_reasons: string[];
+    final_decision: string;
+  };
   onNavigate?: (direction: 'next' | 'prev') => void;
   showNavigationHints?: boolean;
 }
 
 export const UrlAnalysisCard: FC<UrlAnalysisCardProps> = ({ 
-  result, 
-  url, 
+  urlAnalysis, 
   onNavigate,
   showNavigationHints = true 
 }) => {
@@ -34,7 +42,7 @@ export const UrlAnalysisCard: FC<UrlAnalysisCardProps> = ({
   };
   
   // Handle case where URL analysis data isn't available
-  if (!result.urlAnalysis) {
+  if (!urlAnalysis) {
     return (
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
@@ -78,7 +86,7 @@ export const UrlAnalysisCard: FC<UrlAnalysisCardProps> = ({
             <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
               <div className="flex items-center text-gray-500 dark:text-gray-400 text-sm">
                 <Link className="w-4 h-4 mr-2" />
-                <span className="break-all">{url}</span>
+                <span className="break-all">{urlAnalysis?.url}</span>
               </div>
             </div>
           </div>
@@ -88,7 +96,6 @@ export const UrlAnalysisCard: FC<UrlAnalysisCardProps> = ({
   }
   
   // Extract URL analysis data
-  const urlAnalysis = result.urlAnalysis;
   const isTrusted = urlAnalysis.trusted || urlAnalysis.is_trustworthy;
   const trustScore = urlAnalysis.trust_score || 0;
   const trustReasons = urlAnalysis.trust_reasons || [];
@@ -257,14 +264,7 @@ export const UrlAnalysisCard: FC<UrlAnalysisCardProps> = ({
           <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
             <div className="flex items-center text-gray-500 dark:text-gray-400 text-sm">
               <Link className="w-4 h-4 mr-2" />
-              <a 
-                href={url} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-blue-600 dark:text-blue-400 hover:underline break-all"
-              >
-                {url}
-              </a>
+              <span className="break-all">{urlAnalysis.url}</span>
             </div>
           </div>
         </div>

@@ -343,11 +343,10 @@ export function MainContent() {
   // Calculate total number of results
   const getTotalResults = () => {
     let count = 0;
-    if (textResult) count++;
-    if (imageResult) count++;
-    if (textResult?.type === 'url' && textResult?.urlAnalysis) count++;
-    // Add 1 for ComprehensiveAnalysisCard
-    if (count > 1) count++;
+    if (textResult && imageResult) count++; // Comprehensive Analysis
+    if (textResult) count++; // Text Analysis
+    if (imageResult) count++; // Image Analysis
+    if (textResult?.type === 'url' && textResult?.urlAnalysis) count++; // URL Analysis
     return count;
   };
 
@@ -459,111 +458,118 @@ export function MainContent() {
                        ? 'ഇടത്തേക്കും വലത്തേക്കും അമ്പ് കീകൾ ഉപയോഗിച്ച് ഫലങ്ങൾ മാറ്റുക' 
                        : 'Use left and right arrow keys to switch between results'
                    }>
-                {/* Comprehensive Analysis Card */}
-                <div 
-                  className={clsx(
-                    "w-full transition-opacity duration-300",
-                    activeResultIndex === 0 ? "opacity-100" : "opacity-0 hidden"
+                {/* Navigation Dots */}
+                <div className="flex justify-center space-x-2 mt-4">
+                  {/* Comprehensive Analysis Dot */}
+                  {textResult && imageResult && (
+                    <button
+                      onClick={() => setActiveResultIndex(0)}
+                      className={clsx(
+                        "w-2 h-2 rounded-full transition-all duration-200",
+                        activeResultIndex === 0
+                          ? "bg-blue-500 scale-125"
+                          : "bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500"
+                      )}
+                      aria-label="Show comprehensive analysis"
+                    />
                   )}
-                >
-                  <ComprehensiveAnalysisCard
-                    textAnalysis={textResult}
-                    imageAnalysis={imageResult}
-                    urlAnalysis={textResult?.type === 'url' ? textResult.urlAnalysis : undefined}
-                  />
+                  
+                  {/* Text Analysis Dot */}
+                  {textResult && (
+                    <button
+                      onClick={() => setActiveResultIndex(1)}
+                      className={clsx(
+                        "w-2 h-2 rounded-full transition-all duration-200",
+                        activeResultIndex === 1
+                          ? "bg-blue-500 scale-125"
+                          : "bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500"
+                      )}
+                      aria-label="Show text analysis"
+                    />
+                  )}
+
+                  {/* Image Analysis Dot */}
+                  {imageResult && (
+                    <button
+                      onClick={() => setActiveResultIndex(2)}
+                      className={clsx(
+                        "w-2 h-2 rounded-full transition-all duration-200",
+                        activeResultIndex === 2
+                          ? "bg-blue-500 scale-125"
+                          : "bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500"
+                      )}
+                      aria-label="Show image analysis"
+                    />
+                  )}
+
+                  {/* URL Analysis Dot */}
+                  {textResult?.type === 'url' && textResult?.urlAnalysis && (
+                    <button
+                      onClick={() => setActiveResultIndex(3)}
+                      className={clsx(
+                        "w-2 h-2 rounded-full transition-all duration-200",
+                        activeResultIndex === 3
+                          ? "bg-blue-500 scale-125"
+                          : "bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500"
+                      )}
+                      aria-label="Show URL analysis"
+                    />
+                  )}
                 </div>
 
-                {/* Text Analysis Card */}
-                <div className={clsx(
-                  "transition-opacity duration-300",
-                  activeResultIndex === 1 ? "opacity-100" : "opacity-0 hidden"
-                )}>
-                  <div
-                    ref={cardRefs.text}
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === 'ArrowRight') {
-                        e.preventDefault();
-                        navigateResults('next');
-                      } else if (e.key === 'ArrowLeft') {
-                        e.preventDefault();
-                        navigateResults('prev');
-                      }
-                    }}
-                    className="outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 rounded-lg"
-                  >
-                    <ResultCard 
-                      result={textResult} 
-                      content={currentContent}
-                      extractedFromImage={!!extractedText && !currentContent}
-                    />
-                  </div>
-                </div>
+                {/* Results Cards */}
+                <div className="relative mt-6">
+                  {/* Comprehensive Analysis Card */}
+                  {textResult && imageResult && (
+                    <div className={clsx(
+                      "transition-all duration-500 absolute w-full",
+                      activeResultIndex === 0 ? "opacity-100 translate-x-0" : "opacity-0 translate-x-full pointer-events-none"
+                    )}>
+                      <ComprehensiveAnalysisCard
+                        textAnalysis={textResult}
+                        imageAnalysis={imageResult}
+                        urlAnalysis={textResult.urlAnalysis}
+                      />
+                    </div>
+                  )}
 
-                {/* URL Analysis Card */}
-                {textResult?.type === 'url' && textResult?.urlAnalysis && (
-                  <div
-                    ref={cardRefs.url}
-                    className={clsx(
-                      "w-full transition-opacity duration-300 focus:outline-none",
-                      activeResultIndex === (getTotalResults() - 1) ? "opacity-100" : "opacity-0 hidden"
-                    )}
-                    tabIndex={0}
-                    onKeyDown={(e) => handleCardKeyDown(e, getTotalResults() - 1)}
-                  >
-                    <UrlAnalysisCard 
-                      result={textResult} 
-                      url={textResult.urlAnalysis?.url || textResult.input?.url || currentContent}
-                      onNavigate={navigateResults}
-                      showNavigationHints={hasMultipleResults}
-                    />
-                  </div>
-                )}
+                  {/* Text Analysis Card */}
+                  {textResult && (
+                    <div className={clsx(
+                      "transition-all duration-500 absolute w-full",
+                      activeResultIndex === 1 ? "opacity-100 translate-x-0" : "opacity-0 translate-x-full pointer-events-none"
+                    )}>
+                      <ResultCard 
+                        result={textResult} 
+                        content={currentContent}
+                        extractedFromImage={false}
+                      />
+                    </div>
+                  )}
 
-                {/* Image Analysis Card */}
-                {imageResult && (
-                  <div className={clsx(
-                    "transition-opacity duration-300",
-                    activeResultIndex === (textResult?.type === 'url' ? 3 : 2) ? "opacity-100" : "opacity-0 hidden"
-                  )}>
-                    <div
-                      ref={cardRefs.image}
-                      tabIndex={0}
-                      onKeyDown={(e) => {
-                        if (e.key === 'ArrowRight') {
-                          e.preventDefault();
-                          navigateResults('next');
-                        } else if (e.key === 'ArrowLeft') {
-                          e.preventDefault();
-                          navigateResults('prev');
-                        }
-                      }}
-                      className="outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 rounded-lg"
-                    >
-                      <ImageResultCard 
-                        result={imageResult} 
-                        imageUrl={currentImageContent} 
+                  {/* Image Analysis Card */}
+                  {imageResult && (
+                    <div className={clsx(
+                      "transition-all duration-500 absolute w-full",
+                      activeResultIndex === 2 ? "opacity-100 translate-x-0" : "opacity-0 translate-x-full pointer-events-none"
+                    )}>
+                      <ImageResultCard
+                        result={imageResult}
+                        imageUrl={currentImageContent}
                         extractedText={extractedText}
                       />
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {/* Navigation Dots */}
-                <div className="flex justify-center items-center mt-8 space-x-2">
-                  {Array.from({ length: getTotalResults() }).map((_, index) => (
-                    <button
-                      key={index}
-                      onClick={() => setActiveResultIndex(index)}
-                      className={clsx(
-                        "w-2 h-2 rounded-full transition-all duration-300",
-                        activeResultIndex === index
-                          ? "bg-blue-500 w-4"
-                          : "bg-gray-300 dark:bg-gray-600"
-                      )}
-                      aria-label={`Go to result ${index + 1}`}
-                    />
-                  ))}
+                  {/* URL Analysis Card */}
+                  {textResult?.type === 'url' && textResult?.urlAnalysis && (
+                    <div className={clsx(
+                      "transition-all duration-500 absolute w-full",
+                      activeResultIndex === 3 ? "opacity-100 translate-x-0" : "opacity-0 translate-x-full pointer-events-none"
+                    )}>
+                      <UrlAnalysisCard urlAnalysis={textResult.urlAnalysis} />
+                    </div>
+                  )}
                 </div>
               </div>
             )}

@@ -256,7 +256,7 @@ export const analyzeService = {
                     }
 
                     // Add text if available
-                    if (extractedContent.text) {
+                    if (extractedContent.text && extractedContent.title) {
                         formData.append('text', extractedContent.title);
                     }
                     
