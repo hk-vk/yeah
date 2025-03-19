@@ -8,6 +8,7 @@ import {
 import { useLanguage } from '../contexts/LanguageContext';
 import { GlassCard } from './common/GlassCard';
 import clsx from 'clsx';
+import { ImageAnalysisSliders } from './ImageAnalysisSliders';
 
 interface ImageAnalysisDetails {
   ai_generated: boolean;
@@ -725,6 +726,9 @@ export const ImageResultCard: FC<ImageResultCardProps> = ({ result, imageUrl, ex
           </div>
         </div>
       </GlassCard>
+
+      {/* Add the ImageAnalysisSliders component */}
+      <ImageAnalysisSliders result={result} />
     </motion.div>
   );
 };

@@ -235,6 +235,35 @@ export const analyzeService = {
             // Use exaService to extract URL content
             const extractedContent = await exaService.extractUrlContent(url);
             
+            // If we have an image from the extracted content, analyze it
+            let imageAnalysisResult = null;
+            if (extractedContent.image) {
+                try {
+                    console.log('Sending extracted image to ngrok API for analysis:', extractedContent.image);
+                    
+                    // Create a FormData object for the image analysis request
+                    const formData = new FormData();
+                    formData.append('image', extractedContent.image);
+                    if (extractedContent.text) {
+                        formData.append('text', extractedContent.text);
+                    }
+                    
+                    // Send the image to the ngrok endpoint
+                    const imageAnalysisResponse = await fetch('https://settling-presently-giraffe.ngrok-free.app/analyze', {
+                        method: 'POST',
+                        body: formData,
+                        mode: 'cors',
+                    });
+                    
+                    if (imageAnalysisResponse.ok) {
+                        imageAnalysisResult = await imageAnalysisResponse.json();
+                        console.log('Image analysis result:', imageAnalysisResult);
+                    }
+                } catch (imageAnalysisError) {
+                    console.error('Error analyzing extracted image:', imageAnalysisError);
+                }
+            }
+            
             // Send the extracted text to the reverse-search API for text analysis
             let textAnalysisResult: Partial<TextAnalysisResult> = {}; // Properly type as partial TextAnalysisResult
             try {
@@ -283,12 +312,15 @@ export const analyzeService = {
                 input: {
                     url,
                     title: extractedContent.title,
-                    published_date: extractedContent.publishedDate
+                    published_date: extractedContent.publishedDate,
+                    image_url: extractedContent.image
                 },
                 content: extractedContent.text,
                 image: extractedContent.image,
                 // Add URL analysis data if available
-                urlAnalysis: urlAnalysisData
+                urlAnalysis: urlAnalysisData,
+                // Add image analysis if available
+                imageAnalysis: imageAnalysisResult
             };
 
             // Save analysis to Supabase and wait for it to complete

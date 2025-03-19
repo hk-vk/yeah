@@ -80,6 +80,14 @@ export function MainContent() {
               setCurrentImageContent(result.input.image_url);
             }
             
+            // If we have image analysis results from the URL, set them
+            if (result.imageAnalysis) {
+              setImageResult({
+                ...result.imageAnalysis,
+                type: 'image'
+              });
+            }
+            
             // Show text analysis
             setActiveResultIndex(0);
           }
@@ -211,35 +219,56 @@ export function MainContent() {
   const navigateResults = (direction: 'next' | 'prev') => {
     if (!hasMultipleResults) return;
     
-    const maxIndex = textResult?.type === 'url' && textResult?.urlAnalysis ? 1 : 
-                    (textResult && imageResult) ? 1 : 0;
+    // Calculate total number of results
+    const totalResults = getTotalResults();
     
+    // Calculate new index with wrap-around
     const newIndex = direction === 'next' 
-      ? Math.min(activeResultIndex + 1, maxIndex)
-      : Math.max(activeResultIndex - 1, 0);
+      ? (activeResultIndex + 1) % totalResults
+      : (activeResultIndex - 1 + totalResults) % totalResults;
     
     setActiveResultIndex(newIndex);
     
-    // Focus appropriate card
-    if (newIndex === 0) {
-      cardRefs.text.current?.focus();
-      announceCardChange('text');
-    } else if (textResult?.type === 'url' && textResult?.urlAnalysis) {
-      cardRefs.url.current?.focus();
-      announceCardChange('url');
-    } else {
-      cardRefs.image.current?.focus();
-      announceCardChange('image');
+    // Focus appropriate card based on index
+    switch(newIndex) {
+      case 0:
+        // Comprehensive Analysis
+        cardRefs.text.current?.focus();
+        announceCardChange('comprehensive');
+        break;
+      case 1:
+        // Text Analysis
+        cardRefs.text.current?.focus();
+        announceCardChange('text');
+        break;
+      case 2:
+        if (textResult?.type === 'url' && textResult?.urlAnalysis) {
+          // URL Analysis
+          cardRefs.url.current?.focus();
+          announceCardChange('url');
+        } else if (imageResult) {
+          // Image Analysis
+          cardRefs.image.current?.focus();
+          announceCardChange('image');
+        }
+        break;
+      case 3:
+        // Image Analysis (when URL analysis is present)
+        cardRefs.image.current?.focus();
+        announceCardChange('image');
+        break;
     }
   };
 
-  const announceCardChange = (type: 'image' | 'text' | 'url') => {
+  const announceCardChange = (type: 'comprehensive' | 'image' | 'text' | 'url') => {
     // Update announcement based on type
     const message = type === 'image' 
       ? language === 'ml' ? 'ചിത്ര വിശകലനം കാണിക്കുന്നു' : 'Showing image analysis'
       : type === 'url'
         ? language === 'ml' ? 'URL വിശകലനം കാണിക്കുന്നു' : 'Showing URL analysis'
-        : language === 'ml' ? 'വാചക വിശകലനം കാണിക്കുന്നു' : 'Showing text analysis';
+        : type === 'comprehensive'
+          ? language === 'ml' ? 'സമഗ്ര വിശകലനം കാണിക്കുന്നു' : 'Showing comprehensive analysis'
+          : language === 'ml' ? 'വാചക വിശകലനം കാണിക്കുന്നു' : 'Showing text analysis';
     
     // Create and clean up aria live region
     const announcement = document.createElement('div');
@@ -320,6 +349,17 @@ export function MainContent() {
     // Add 1 for ComprehensiveAnalysisCard
     if (count > 1) count++;
     return count;
+  };
+
+  // Add a handleCardKeyDown function to fix the error
+  const handleCardKeyDown = (e: React.KeyboardEvent, index: number) => {
+    if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      navigateResults('next');
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      navigateResults('prev');
+    }
   };
 
   return (
@@ -420,26 +460,17 @@ export function MainContent() {
                        : 'Use left and right arrow keys to switch between results'
                    }>
                 {/* Comprehensive Analysis Card */}
-                <div className={clsx(
-                  "transition-opacity duration-300",
-                  activeResultIndex === 0 ? "opacity-100" : "opacity-0 hidden"
-                )}>
-                  <div
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === 'ArrowRight') {
-                        e.preventDefault();
-                        navigateResults('next');
-                      }
-                    }}
-                    className="outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 rounded-lg"
-                  >
-                    <ComprehensiveAnalysisCard
-                      textAnalysis={textResult}
-                      imageAnalysis={imageResult || undefined}
-                      urlAnalysis={textResult?.type === 'url' ? textResult.urlAnalysis : undefined}
-                    />
-                  </div>
+                <div 
+                  className={clsx(
+                    "w-full transition-opacity duration-300",
+                    activeResultIndex === 0 ? "opacity-100" : "opacity-0 hidden"
+                  )}
+                >
+                  <ComprehensiveAnalysisCard
+                    textAnalysis={textResult}
+                    imageAnalysis={imageResult}
+                    urlAnalysis={textResult?.type === 'url' ? textResult.urlAnalysis : undefined}
+                  />
                 </div>
 
                 {/* Text Analysis Card */}
@@ -471,29 +502,21 @@ export function MainContent() {
 
                 {/* URL Analysis Card */}
                 {textResult?.type === 'url' && textResult?.urlAnalysis && (
-                  <div className={clsx(
-                    "transition-opacity duration-300",
-                    activeResultIndex === 2 ? "opacity-100" : "opacity-0 hidden"
-                  )}>
-                    <div
-                      ref={cardRefs.url}
-                      tabIndex={0}
-                      onKeyDown={(e) => {
-                        if (e.key === 'ArrowLeft') {
-                          e.preventDefault();
-                          navigateResults('prev');
-                        } else if (e.key === 'ArrowRight' && imageResult) {
-                          e.preventDefault();
-                          navigateResults('next');
-                        }
-                      }}
-                      className="outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 rounded-lg"
-                    >
-                      <UrlAnalysisCard 
-                        result={textResult} 
-                        url={textResult.urlAnalysis?.url || textResult.input?.url || currentContent}
-                      />
-                    </div>
+                  <div
+                    ref={cardRefs.url}
+                    className={clsx(
+                      "w-full transition-opacity duration-300 focus:outline-none",
+                      activeResultIndex === (getTotalResults() - 1) ? "opacity-100" : "opacity-0 hidden"
+                    )}
+                    tabIndex={0}
+                    onKeyDown={(e) => handleCardKeyDown(e, getTotalResults() - 1)}
+                  >
+                    <UrlAnalysisCard 
+                      result={textResult} 
+                      url={textResult.urlAnalysis?.url || textResult.input?.url || currentContent}
+                      onNavigate={navigateResults}
+                      showNavigationHints={hasMultipleResults}
+                    />
                   </div>
                 )}
 
@@ -507,7 +530,10 @@ export function MainContent() {
                       ref={cardRefs.image}
                       tabIndex={0}
                       onKeyDown={(e) => {
-                        if (e.key === 'ArrowLeft') {
+                        if (e.key === 'ArrowRight') {
+                          e.preventDefault();
+                          navigateResults('next');
+                        } else if (e.key === 'ArrowLeft') {
                           e.preventDefault();
                           navigateResults('prev');
                         }

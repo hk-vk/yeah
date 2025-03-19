@@ -28,6 +28,7 @@ export interface TextAnalysisResult extends BaseAnalysisResult {
     trust_reasons: string[];
     final_decision: string;
   };
+  imageAnalysis?: ImageAnalysisResult;
 }
 
 export interface ImageAnalysisResult extends BaseAnalysisResult {
@@ -49,14 +50,6 @@ export interface ImageAnalysisResult extends BaseAnalysisResult {
       mismatch: boolean;
       context_similarity: number;
       context_mismatch: boolean;
-      reverse_search?: {
-        found: boolean;
-        matches?: Array<{
-          url: string;
-          title: string;
-        }>;
-        reliability_score?: number;
-      };
     };
   };
 }
