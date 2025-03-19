@@ -68,12 +68,10 @@ export const DomainCredibilityAnalyzer: React.FC<DomainCredibilityAnalyzerProps>
   
   // Add state for the new domain form
   const [showAddForm, setShowAddForm] = useState(false);
-  const [newDomainEntry, setNewDomainEntry] = useState({
-    domain: '',
-    real: 0,
-    total: 0
+  const [newEntry, setNewEntry] = useState({
+    url: '',
+    class: '1' // Default to real news
   });
-  const [newUrl, setNewUrl] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -497,7 +495,7 @@ export const DomainCredibilityAnalyzer: React.FC<DomainCredibilityAnalyzerProps>
 
   // Add a function to handle form submission
   const handleAddDomain = async () => {
-    if (!newUrl) {
+    if (!newEntry.url) {
       setSubmitError("Please enter a URL");
       return;
     }
@@ -507,9 +505,7 @@ export const DomainCredibilityAnalyzer: React.FC<DomainCredibilityAnalyzerProps>
     
     try {
       // Call the analyze service to get article data
-      // This would normally use your @exaservice
-      // Replace this with your actual service call
-      const response = await fetch(`/api/analyze?url=${encodeURIComponent(newUrl)}`);
+      const response = await fetch(`/api/analyze?url=${encodeURIComponent(newEntry.url)}`);
       
       if (!response.ok) {
         throw new Error(`Failed to analyze URL: ${response.statusText}`);
@@ -518,11 +514,10 @@ export const DomainCredibilityAnalyzer: React.FC<DomainCredibilityAnalyzerProps>
       const data = await response.json();
       
       // Extract domain from the URL
-      const domain = extractDomain(newUrl);
+      const domain = extractDomain(newEntry.url);
       
-      // Determine if it's real or fake based on the analysis
-      // This is a placeholder - replace with your actual logic
-      const isReal = data.verdict === 'REAL' || data.score > 0.5;
+      // Use the manually set class value
+      const isReal = newEntry.class === '1';
       
       // Update existing domain or add new one
       if (credibilityData) {
@@ -578,7 +573,10 @@ export const DomainCredibilityAnalyzer: React.FC<DomainCredibilityAnalyzerProps>
       }
       
       // Reset form
-      setNewUrl('');
+      setNewEntry({
+        url: '',
+        class: '1'
+      });
       setShowAddForm(false);
     } catch (error) {
       setSubmitError(`Error analyzing URL: ${error instanceof Error ? error.message : String(error)}`);
@@ -820,7 +818,7 @@ export const DomainCredibilityAnalyzer: React.FC<DomainCredibilityAnalyzerProps>
       {showAddForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold mb-4">Add New URL</h3>
+            <h3 className="text-lg font-semibold mb-4">Add New Article</h3>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -828,12 +826,27 @@ export const DomainCredibilityAnalyzer: React.FC<DomainCredibilityAnalyzerProps>
                 </label>
                 <input
                   type="text"
-                  value={newUrl}
-                  onChange={e => setNewUrl(e.target.value)}
-                  placeholder="https://example.com"
+                  value={newEntry.url}
+                  onChange={e => setNewEntry({ ...newEntry, url: e.target.value })}
+                  placeholder="https://example.com/article"
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   disabled={isSubmitting}
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Class
+                </label>
+                <select
+                  value={newEntry.class}
+                  onChange={e => setNewEntry({ ...newEntry, class: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={isSubmitting}
+                >
+                  <option value="1">Real News (1)</option>
+                  <option value="0">Fake News (0)</option>
+                </select>
               </div>
               
               {submitError && (
@@ -843,7 +856,7 @@ export const DomainCredibilityAnalyzer: React.FC<DomainCredibilityAnalyzerProps>
               )}
               
               <div className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                <p>Enter a news article URL to automatically analyze and add to the database.</p>
+                <p>Enter a news article URL and classify it as real or fake news. Other data will be fetched automatically.</p>
               </div>
               
               <div className="flex justify-end space-x-3 mt-6">
@@ -857,7 +870,7 @@ export const DomainCredibilityAnalyzer: React.FC<DomainCredibilityAnalyzerProps>
                 <button
                   onClick={handleAddDomain}
                   className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center"
-                  disabled={!newUrl || isSubmitting}
+                  disabled={!newEntry.url || isSubmitting}
                 >
                   {isSubmitting ? (
                     <>
@@ -865,7 +878,7 @@ export const DomainCredibilityAnalyzer: React.FC<DomainCredibilityAnalyzerProps>
                       Analyzing...
                     </>
                   ) : (
-                    'Add URL'
+                    'Add Article'
                   )}
                 </button>
               </div>
