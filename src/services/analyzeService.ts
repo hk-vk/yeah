@@ -374,7 +374,18 @@ export const analyzeService = {
             }
 
             const result = await response.json();
-            return 'result' in result ? result.result : result;
+            const data = 'result' in result ? result.result : result;
+            
+            // Add explanations to the response
+            if (data.matches && data.matches.length > 0) {
+                data.matches = data.matches.map((match: any) => ({
+                    ...match,
+                    explanation_ml: match.explanation_ml || 'വിശദീകരണം ലഭ്യമല്ല',
+                    explanation_en: match.explanation_en || 'No explanation available'
+                }));
+            }
+            
+            return data;
         } catch (error: unknown) {
             console.error('Error performing reverse search:', error instanceof Error ? error.message : String(error));
             // Return empty matches array in case of error

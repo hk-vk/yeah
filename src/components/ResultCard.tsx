@@ -165,7 +165,7 @@ export const ResultCard: FC<ResultCardProps> = ({
               <motion.div
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
-                className="flex items-center text-amber-500 dark:text-amber-400"
+                className="flex items-center text-red-500 dark:text-red-400"
               >
                 <ShieldAlert className="w-8 h-8 mr-2" />
                 <span className={clsx(
@@ -207,11 +207,28 @@ export const ResultCard: FC<ResultCardProps> = ({
               {t.analysisTitle}
             </h3>
             <p className={clsx(
-              "text-gray-600 dark:text-gray-300",
+              "text-gray-600 dark:text-gray-300 mb-3",
               isMalayalam && "text-lg leading-loose"
             )}>
-              {result.EXPLANATION_EN}
+              {isMalayalam ? result.EXPLANATION_ML : result.EXPLANATION_EN}
             </p>
+            {/* Show both languages if reverse search results are available */}
+            {reverseSearchResults?.[0]?.explanation_ml && reverseSearchResults?.[0]?.explanation_en && (
+              <div className="mt-4 space-y-3 border-t border-gray-200 dark:border-gray-700 pt-4">
+                <p className={clsx(
+                  "text-gray-600 dark:text-gray-300",
+                  "text-lg leading-loose"
+                )}>
+                  {reverseSearchResults[0].explanation_ml}
+                </p>
+                <p className={clsx(
+                  "text-gray-600 dark:text-gray-300",
+                  "text-sm leading-relaxed"
+                )}>
+                  {reverseSearchResults[0].explanation_en}
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Reverse Search Results */}
@@ -234,7 +251,7 @@ export const ResultCard: FC<ResultCardProps> = ({
               <div className="flex items-center space-x-1">
                 <Globe className="w-3.5 h-3.5" />
                 <span>
-                  {language === 'ml' ? 'പരിശോധിച്ച മൂലങ്ങൾ' : 'Sources checked'}: {result.sourcesChecked}
+                  {language === 'ml' ? 'പരിശോധിച്ച മൂലങ്ങൾ' : 'Sources checked'}: {reverseSearchResults?.length || 0}
                 </span>
               </div>
             </div>
@@ -244,3 +261,4 @@ export const ResultCard: FC<ResultCardProps> = ({
     </motion.div>
   );
 };
+
