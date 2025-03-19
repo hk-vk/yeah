@@ -16,6 +16,7 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import { useAuth } from '../../contexts/AuthContext';
 import clsx from 'clsx';
 import { feedbackService } from '../../services/feedbackService';
+import { UrlErrorCard } from '../UrlErrorCard';
 
 const DEBUG_OCR = true; // Enable debug mode for OCR
 
@@ -42,6 +43,7 @@ export function MainContent() {
     text: useRef<HTMLDivElement>(null),
     url: useRef<HTMLDivElement>(null)
   };
+  const [urlError, setUrlError] = useState<{ message: string; url: string } | null>(null);
 
   // Helper function to convert undefined to null for ImageResultCard
   const imageUrlForCard = (url: string | undefined): string | null => url || null;
@@ -59,6 +61,7 @@ export function MainContent() {
     setTextResult(null);
     setImageResult(null);
     setExtractedText('');
+    setUrlError(null);
     
     const processedContent = content.trim();
     setCurrentContent(processedContent);
@@ -91,13 +94,16 @@ export function MainContent() {
             // Show text analysis
             setActiveResultIndex(0);
           }
-        } catch (error) {
+        } catch (error: any) {
           console.error('URL analysis failed:', error);
-          toast.error(
-            language === 'ml' 
-              ? 'URL വിശകലനം പരാജയപ്പെട്ടു' 
-              : 'URL analysis failed'
-          );
+          
+          // Set URL error state
+          setUrlError({
+            message: error.message || (language === 'ml' 
+              ? 'പിഴവ്: മറ്റൊരു URL ഉപയോഗിച്ച് വീണ്ടും ശ്രമിക്കുക'
+              : 'Error: Please try again with a different URL'),
+            url: processedContent
+          });
         }
         setIsAnalyzing(false);
         return;
@@ -348,6 +354,13 @@ export function MainContent() {
     return count;
   };
 
+  // Add a retry handler for URL errors
+  const handleRetryUrl = () => {
+    if (urlError) {
+      handleAnalyze({ type: 'url', content: urlError.url });
+    }
+  };
+
   return (
     <div className="w-full max-w-4xl mx-auto overflow-hidden">
       <motion.div
@@ -404,8 +417,19 @@ export function MainContent() {
           <LoadingSpinner />
         ) : (
           <>
+            {/* URL Error State */}
+            {urlError && (
+              <div className="min-h-[400px] mb-24">
+                <UrlErrorCard 
+                  errorMessage={urlError.message} 
+                  url={urlError.url}
+                  onRetry={handleRetryUrl}
+                />
+              </div>
+            )}
+            
             {/* TEXT-ONLY RESULT */}
-            {textResult && !imageResult && !(textResult.type === 'url' && textResult.urlAnalysis) && (
+            {!urlError && textResult && !imageResult && !(textResult.type === 'url' && textResult.urlAnalysis) && (
               <div className="min-h-[400px] mb-24">
                 <ResultCard 
                   result={textResult} 
@@ -420,7 +444,7 @@ export function MainContent() {
             )}
             
             {/* IMAGE-ONLY RESULT */}
-            {imageResult && !textResult && (
+            {!urlError && imageResult && !textResult && (
               <div className="min-h-[400px] mb-24">
                 <ImageResultCard 
                   result={imageResult} 
@@ -435,7 +459,7 @@ export function MainContent() {
             )}
             
             {/* COMBINED RESULTS WITH SWIPE UI */}
-            {hasMultipleResults && (
+            {!urlError && hasMultipleResults && (
               <div className="min-h-[600px] mb-24" tabIndex={0} 
                    aria-label={language === 'ml' ? 'വിശകലന ഫലങ്ങൾ' : 'Analysis Results'} 
                    role="region"
@@ -607,7 +631,6 @@ export function MainContent() {
                       <UrlAnalysisCard 
                         urlAnalysis={textResult.urlAnalysis}
                         onNavigate={navigateResults}
-                        showNavigationHints={hasMultipleResults}
                       />
                     </div>
                   )}
