@@ -85,54 +85,6 @@ const saveAnalysisToSupabase = async (type: AnalysisType, input: any, result: an
     }
 };
 
-interface AnalyzeResponse {
-  verdict: string;
-  score: number;
-  details: {
-    ai_generated: boolean;
-    reverse_search: {
-      found: boolean;
-      matches?: Array<{
-        url: string;
-        title: string;
-      }>;
-    };
-    deepfake: boolean;
-    tampering_analysis: boolean;
-    image_caption: string;
-    text_analysis?: {
-      user_text: string;
-      extracted_text: string;
-      mismatch: boolean;
-      context_similarity: number;
-      context_mismatch: boolean;
-      reverse_search?: {
-        found: boolean;
-        matches?: Array<{
-          url: string;
-          title: string;
-        }>;
-        reliability_score?: number;
-      };
-    };
-    date_analysis?: {
-      image_dates: string[];
-      text_dates: string[];
-      match: boolean;
-      similarity: number;
-      mismatch: boolean;
-    };
-  };
-}
-
-interface ExtendedAnalysisResult extends AnalyzeResponse {
-  type: "text" | "url" | "image" | "text_image";
-  ISFAKE: number;
-  CONFIDENCE: number;
-  EXPLANATION_EN: string;
-  EXPLANATION_ML: string;
-}
-
 export const analyzeService = {
     async analyzeContent(content: string, userId?: string): Promise<TextAnalysisResult> {
         try {
@@ -252,41 +204,180 @@ export const analyzeService = {
         }
     },
 
-    /**
-     * Analyze content from a URL
-     * @param url The URL to analyze
-     * @param text Optional text to analyze with the image
-     */
-    async analyzeUrl(url: string, text?: string): Promise<ExtendedAnalysisResult> {
+    async analyzeUrl(url: string, userId?: string): Promise<TextAnalysisResult> {
         try {
-            console.log('Starting URL analysis:', { url, text });
-
-            // First extract content from URL using Exa API
-            const extractedContent = await exaService.extractUrlContent(url);
-            console.log('Content extracted from URL:', extractedContent);
-
-            if (!extractedContent.image) {
-                console.error('No image found in the URL content');
-                throw new Error('No image found in the URL content');
-            }
-
-            // Now analyze the extracted image
-            const result = await this.analyzeImage(extractedContent.image, text || extractedContent.text);
+            console.log('Analyzing URL using Exa API:', url);
             
-            // Add compatibility fields for TextAnalysisResult
-            const analysisResult: ExtendedAnalysisResult = {
-                ...result,
-                type: "text_image",
-                ISFAKE: result.verdict.toLowerCase().includes('fake') ? 1 : 0,
-                CONFIDENCE: result.score,
-                EXPLANATION_EN: `Analysis of content from ${url}. ${result.verdict === 'fake' ? 'The content shows signs of manipulation.' : 'The content appears to be authentic.'}`,
-                EXPLANATION_ML: `${url} നിന്നുള്ള ഉള്ളടക്കത്തിന്റെ വിശകലനം. ${result.verdict === 'fake' ? 'ഉള്ളടക്കത്തിൽ കൃത്രിമത്വത്തിന്റെ ലക്ഷണങ്ങൾ കാണിക്കുന്നു.' : 'ഉള്ളടക്കം യഥാർത്ഥമാണെന്ന് തോന്നുന്നു.'}`
+            // First call the specialized URL analysis endpoint
+            let urlAnalysisData = null;
+            try {
+                // Call the URL analysis endpoint
+                const urlAnalysisResponse = await connectionManager.fetch(
+                    `${API_CONFIG.BASE_URL}/api/analyze-url`,
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ url }),
+                    }
+                );
+                
+                if (urlAnalysisResponse.ok) {
+                    urlAnalysisData = await urlAnalysisResponse.json();
+                    console.log('URL analysis data:', urlAnalysisData);
+                }
+            } catch (urlAnalysisError) {
+                console.error('Error fetching URL analysis data:', urlAnalysisError);
+                // Continue with content extraction even if URL analysis fails
+            }
+            
+            // Use exaService to extract URL content
+            const extractedContent = await exaService.extractUrlContent(url);
+            
+            // If we have an image from the extracted content, analyze it
+            let imageAnalysisResult = null;
+            if (extractedContent.image) {
+                try {
+                    console.log('Sending extracted image to ngrok API for analysis:', extractedContent.image);
+                    
+                    // Create a FormData object for the image analysis request
+                    const formData = new FormData();
+                    
+                    // Handle image URL
+                    if (extractedContent.image.startsWith('http')) {
+                        formData.append('url', extractedContent.image);
+                    } else {
+                        // Convert base64/blob to file if needed
+                        const response = await fetch(extractedContent.image);
+                        const blob = await response.blob();
+                        const file = new File([blob], 'image.jpg', { type: 'image/jpeg' });
+                        formData.append('image', file);
+                    }
+
+                    // Add text if available
+                    if (extractedContent.text) {
+                        formData.append('text', extractedContent.title);
+                    }
+                    
+                    // Send request to analysis endpoint
+                    const imageAnalysisResponse = await fetch('https://settling-presently-giraffe.ngrok-free.app/analyze', {
+                        method: 'POST',
+                        body: formData,
+                        mode: 'cors',
+                    });
+                    
+                    if (imageAnalysisResponse.ok) {
+                        imageAnalysisResult = await imageAnalysisResponse.json();
+                        console.log('Image analysis result:', imageAnalysisResult);
+                    }
+                } catch (imageAnalysisError) {
+                    console.error('Error analyzing extracted image:', imageAnalysisError);
+                }
+            }
+            
+            // Send the extracted text to the reverse-search API for text analysis
+            let textAnalysisResult: Partial<TextAnalysisResult> = {}; // Properly type as partial TextAnalysisResult
+            try {
+                console.log('Sending extracted text to reverse-search API');
+                
+                // Extract timestamp from the URL content if available
+                const publishedDate = extractedContent.publishedDate || new Date().toISOString();
+                
+                // Only send the extracted text and timestamp to the API
+                const response = await connectionManager.fetch(
+                    `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.REVERSE_SEARCH}`,
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ 
+                            content: extractedContent.text,
+                            timestamp: publishedDate
+                        }),
+                    }
+                );
+
+                if (response.ok) {
+                    textAnalysisResult = await response.json();
+                    console.log('Text analysis result:', textAnalysisResult);
+                }
+            } catch (textAnalysisError) {
+                console.error('Error analyzing extracted text:', textAnalysisError);
+                // Continue with URL analysis even if text analysis fails
+            }
+            
+            // Create a result structure combining URL metadata and text analysis
+            // Ensure we're using the ISFAKE, CONFIDENCE, and other scores from the API response
+            const result = {
+                // Extract specific fields from textAnalysisResult
+                CONFIDENCE: textAnalysisResult.CONFIDENCE !== undefined ? textAnalysisResult.CONFIDENCE : 0.85,
+                EXPLANATION_EN: textAnalysisResult.EXPLANATION_EN || 
+                    `Content analyzed from ${url}. The extracted content appears to be ${extractedContent.text.length > 200 ? 'comprehensive' : 'limited'}.`,
+                EXPLANATION_ML: textAnalysisResult.EXPLANATION_ML || 
+                    `${url} നു വിശകലനം ചെയ്ത ഉള്ളടക്കം. എക്സ്ട്രാക്ട് ചെയ്ത ഉള്ളടക്കം ${extractedContent.text.length > 200 ? 'വിശദമാണ്' : 'പരിമിതമാണ്'}.`,
+                ISFAKE: textAnalysisResult.ISFAKE !== undefined ? textAnalysisResult.ISFAKE : 0,
+                // Include any other fields from textAnalysisResult
+                ...textAnalysisResult,
+                // Add URL metadata
+                input: {
+                    url,
+                    title: extractedContent.title,
+                    published_date: extractedContent.publishedDate,
+                    image_url: extractedContent.image
+                },
+                content: extractedContent.text,
+                image: extractedContent.image,
+                // Add URL analysis data if available
+                urlAnalysis: urlAnalysisData,
+                // Add image analysis if available
+                imageAnalysis: imageAnalysisResult
             };
 
-            return analysisResult;
-        } catch (error) {
-            console.error('Error in URL analysis:', error);
-            throw error;
+            // Save analysis to Supabase and wait for it to complete
+            try {
+                const savedAnalysis = await saveAnalysisToSupabase(
+                    'url',
+                    {
+                        url,
+                        title: extractedContent.title,
+                        published_date: extractedContent.publishedDate
+                    },
+                    result,
+                    userId
+                );
+                return {
+                    ...result,
+                    id: savedAnalysis.id,
+                    type: 'url'
+                };
+            } catch (error: unknown) {
+                console.error('Error saving URL analysis:', error instanceof Error ? error.message : String(error));
+                return {
+                    ...result,
+                    id: `local-${Date.now()}`,
+                    type: 'url'
+                };
+            }
+        } catch (error: unknown) {
+            console.error('Error during URL analysis:', error);
+            
+            // Return a mock result if backend is unavailable
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            const mockResult = {
+                CONFIDENCE: 0.7,
+                EXPLANATION_EN: `Unable to analyze URL content due to an error: ${errorMessage}`,
+                EXPLANATION_ML: `പിശക് കാരണം URL ഉള്ളടക്കം വിശകലനം ചെയ്യാൻ കഴിയുന്നില്ല: ${errorMessage}`,
+                ISFAKE: 0,
+                input: { url }
+            };
+            
+            return {
+                ...mockResult,
+                id: `local-${Date.now()}`,
+                type: 'url'
+            };
         }
     },
 
@@ -426,63 +517,6 @@ export const analyzeService = {
             };
         }
     },
-
-    /**
-     * Analyze an image directly
-     * @param imageData The image data (URL or File)
-     * @param text Optional text to analyze with the image
-     */
-    async analyzeImage(imageData: string | File, text?: string): Promise<ExtendedAnalysisResult> {
-        try {
-            console.log('Starting image analysis:', { hasImage: !!imageData, hasText: !!text });
-
-            const formData = new FormData();
-            
-            // Handle both URL and File inputs
-            if (typeof imageData === 'string') {
-                formData.append('url', imageData);
-            } else {
-                formData.append('image', imageData);
-            }
-
-            if (text) {
-                formData.append('text', text);
-            }
-
-            const response = await fetch('/analyze', {
-                method: 'POST',
-                body: formData
-            });
-
-            if (!response.ok) {
-                const error = await response.json();
-                console.error('Analysis API error:', error);
-                throw new Error(error.error || 'Analysis failed');
-            }
-
-            const result = await response.json() as AnalyzeResponse;
-            console.log('Analysis result:', result);
-
-            // Add compatibility fields for TextAnalysisResult
-            const analysisResult: ExtendedAnalysisResult = {
-                ...result,
-                type: text ? "text_image" : "image",
-                ISFAKE: result.verdict.toLowerCase().includes('fake') ? 1 : 0,
-                CONFIDENCE: result.score,
-                EXPLANATION_EN: result.verdict === 'fake' 
-                    ? 'The image shows signs of manipulation or AI generation.' 
-                    : 'The image appears to be authentic.',
-                EXPLANATION_ML: result.verdict === 'fake'
-                    ? 'ചിത്രത്തിൽ കൃത്രിമത്വത്തിന്റെയോ AI നിർമ്മാണത്തിന്റെയോ ലക്ഷണങ്ങൾ കാണിക്കുന്നു.'
-                    : 'ചിത്രം യഥാർത്ഥമാണെന്ന് തോന്നുന്നു.'
-            };
-
-            return analysisResult;
-        } catch (error) {
-            console.error('Error in image analysis:', error);
-            throw error;
-        }
-    }
 };
 
 // Helper function to create a mock analysis result when backend is unavailable
@@ -498,37 +532,14 @@ const createMockAnalysisResult = (content: string) => {
     const isFake = fakeScore > 0.5 ? 1 : 0;
     
     return {
-        verdict: isFake ? 'fake' : 'reliable',
-        score: isFake ? 0.5 : 0.9,
-        details: {
-            ai_generated: false,
-            reverse_search: {
-                found: false,
-                matches: []
-            },
-            deepfake: false,
-            tampering_analysis: false,
-            image_caption: '',
-            text_analysis: {
-                user_text: '',
-                extracted_text: '',
-                mismatch: false,
-                context_similarity: 0,
-                context_mismatch: false,
-                reverse_search: {
-                    found: false,
-                    matches: [],
-                    reliability_score: 0
-                }
-            },
-            date_analysis: {
-                image_dates: [],
-                text_dates: [],
-                match: false,
-                similarity: 0,
-                mismatch: false
-            }
-        }
+        CONFIDENCE: 0.6 + Math.random() * 0.2,
+        EXPLANATION_EN: isFake 
+            ? "The content shows signs of sensationalism and may contain unreliable information."
+            : "The content appears to be reliable based on initial analysis.",
+        EXPLANATION_ML: isFake
+            ? "ഉള്ളടക്കത്തിൽ സെൻസേഷണലിസത്തിന്റെ ലക്ഷണങ്ങൾ കാണിക്കുന്നു, വിശ്വസനീയമല്ലാത്ത വിവരങ്ങൾ അടങ്ങിയിരിക്കാം."
+            : "പ്രാഥമിക വിശകലനത്തിന്റെ അടിസ്ഥാനത്തിൽ ഉള്ളടക്കം വിശ്വസനീയമാണ്.",
+        ISFAKE: isFake
     };
 };
 

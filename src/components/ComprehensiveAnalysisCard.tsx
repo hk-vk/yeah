@@ -243,7 +243,7 @@ export const ComprehensiveAnalysisCard: FC<ComprehensiveAnalysisCardProps> = ({
               <BarChart2 className="w-5 h-5 mr-2" />
               {language === 'ml' ? 'വിശകലന വിശദാംശങ്ങൾ' : 'Analysis Breakdown'}
             </h3>
-            <div className="space-y-3">
+            <div className="grid grid-cols-1 gap-3">
               {textAnalysis && (
                 <div className={clsx(
                   "flex items-center justify-between p-3 rounded-lg transition-colors",
@@ -267,9 +267,6 @@ export const ComprehensiveAnalysisCard: FC<ComprehensiveAnalysisCardProps> = ({
                     )}>
                       {textAnalysis.ISFAKE === 0 ? t.reliable : t.suspicious}
                     </span>
-                    {/* <span className="text-sm text-gray-500">
-                      {language === 'ml' ? `Trust Score: ${Math.round((1 - textAnalysis.ISFAKE) * 100)}%` : `Trust Score: ${Math.round((1 - textAnalysis.ISFAKE) * 100)}%`}
-                    </span> */}
                   </div>
                 </div>
               )}
@@ -296,9 +293,6 @@ export const ComprehensiveAnalysisCard: FC<ComprehensiveAnalysisCardProps> = ({
                     )}>
                       {!imageAnalysis.verdict.toLowerCase().includes('fake') ? t.reliable : t.suspicious}
                     </span>
-                    {/* <span className="text-sm text-gray-500">
-                      {language === 'ml' ? `Trust Score: ${Math.round(imageAnalysis.score * 100)}%` : `Trust Score: ${Math.round(imageAnalysis.score * 100)}%`}
-                    </span> */}
                   </div>
                 </div>
               )}
@@ -325,9 +319,6 @@ export const ComprehensiveAnalysisCard: FC<ComprehensiveAnalysisCardProps> = ({
                     )}>
                       {urlAnalysis.is_trustworthy ? t.reliable : t.suspicious}
                     </span>
-                    {/* <span className="text-sm text-gray-500">
-                      {language === 'ml' ? `Trust Score: ${Math.round(urlAnalysis.trust_score * 100)}%` : `Trust Score: ${Math.round(urlAnalysis.trust_score * 100)}%`}
-                    </span> */}
                   </div>
                 </div>
               )}

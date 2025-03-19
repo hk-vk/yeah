@@ -557,7 +557,7 @@ export const ImageResultCard: FC<ImageResultCardProps> = ({ result, imageUrl, ex
           )}
 
           {/* Analysis Grid */}
-          <div className="grid grid-cols-2 gap-4 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
             {/* AI Generation */}
             <div className={clsx(
               "p-4 rounded-lg",
