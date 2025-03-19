@@ -18,7 +18,7 @@ interface UrlAnalysisCardProps {
     is_trustworthy: boolean;
     trust_reasons: string[];
     final_decision: string;
-  };
+  } | null;
   onNavigate?: (direction: 'next' | 'prev') => void;
   showNavigationHints?: boolean;
 }
@@ -106,48 +106,16 @@ export const UrlAnalysisCard: FC<UrlAnalysisCardProps> = ({
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      drag="x"
-      dragConstraints={{ left: 0, right: 0 }}
-      dragElastic={0.2}
-      onDragEnd={handleDragEnd}
       className="w-full max-w-full mx-auto relative"
     >
-      {showNavigationHints && (
-        <>
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1 }}
-            className="absolute -left-4 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-600 hidden md:flex items-center"
-          >
-            <ChevronLeft className="w-4 h-4 mr-2" />
-            <span className="text-sm">
-              {language === 'ml' ? 'വാചക വിശകലനം' : 'Text Analysis'}
-            </span>
-          </motion.div>
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1 }}
-            className="absolute -right-4 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-600 hidden md:flex items-center"
-          >
-            <span className="text-sm">
-              {language === 'ml' ? 'ചിത്ര വിശകലനം' : 'Image Analysis'}
-            </span>
-            <ChevronRight className="w-4 h-4 ml-2" />
-          </motion.div>
-        </>
-      )}
-
       <GlassCard className="relative overflow-hidden backdrop-blur-sm">
-        <div className="absolute inset-0 bg-gradient-to-br from-white/50 to-white/30 dark:from-gray-800/50 dark:to-gray-800/30" />
-        <div className="relative p-6">
+        <div className="p-6 space-y-6">
           {/* Header */}
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between">
             <div className="flex items-center">
               <Globe className="w-6 h-6 mr-2 text-blue-600 dark:text-blue-400" />
               <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100">
-                {language === 'ml' ? 'URL വിശകലനം' : 'URL Analysis'}
+                {language === 'ml' ? 'URL പരിശോധന' : 'URL Analysis'}
               </h2>
             </div>
             <div className="flex items-center gap-2">
@@ -159,9 +127,8 @@ export const UrlAnalysisCard: FC<UrlAnalysisCardProps> = ({
               <span className={clsx(
                 "px-3 py-1 rounded-full text-sm font-medium",
                 isTrusted 
-                  ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200 border-green-200 dark:border-green-800/30"
-                  : "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200 border-red-200 dark:border-red-800/30",
-                "border"
+                  ? "bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300"
+                  : "bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300"
               )}>
                 {isTrusted ? t.reliable : t.suspicious}
               </span>
@@ -170,10 +137,10 @@ export const UrlAnalysisCard: FC<UrlAnalysisCardProps> = ({
 
           {/* Main Analysis Section */}
           <div className={clsx(
-            "mb-6 p-4 rounded-lg border",
+            "p-4 rounded-lg",
             isTrusted 
-              ? "bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800/30" 
-              : "bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800/30"
+              ? "bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800/30" 
+              : "bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800/30"
           )}>
             <div className="flex items-start">
               {isTrusted ? (
@@ -198,10 +165,10 @@ export const UrlAnalysisCard: FC<UrlAnalysisCardProps> = ({
           </div>
 
           {/* Trust Score */}
-          <div className="mb-6">
+          <div>
             <h3 className="text-lg font-medium mb-3 text-gray-800 dark:text-gray-100 flex items-center">
               <TrendingUp className="w-5 h-5 mr-2" />
-              {language === 'ml' ? 'ട്രസ്ട് സ്കോർ' : 'Trust Score'}
+              {language === 'ml' ? 'വിശ്വസനീയത സ്കോർ' : 'Trust Score'}
             </h3>
             <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg">
               <div className="flex items-center">
@@ -224,9 +191,9 @@ export const UrlAnalysisCard: FC<UrlAnalysisCardProps> = ({
 
           {/* Trust Reasons */}
           {trustReasons.length > 0 && (
-            <div className="mb-6">
+            <div>
               <h3 className="text-lg font-medium mb-3 text-gray-800 dark:text-gray-100">
-                {language === 'ml' ? 'വിശ്വാസകാരണങ്ങൾ' : 'Trust Reasons'}
+                {language === 'ml' ? 'വിശ്വസനീയതയുടെ കാരണങ്ങൾ' : 'Trust Reasons'}
               </h3>
               <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg space-y-2">
                 {trustReasons.map((reason: string, index: number) => (
@@ -241,14 +208,14 @@ export const UrlAnalysisCard: FC<UrlAnalysisCardProps> = ({
 
           {/* Safe Browsing Status */}
           <div className={clsx(
-            "mb-6 p-4 rounded-lg",
+            "p-4 rounded-lg",
             isSafe 
               ? "bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800/30" 
               : "bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800/30"
           )}>
             <h3 className="font-medium mb-2 flex items-center text-gray-900 dark:text-gray-100">
               <TrendingUp className="w-4 h-4 mr-2" />
-              {language === 'ml' ? 'Google Safe Browsing' : 'Google Safe Browsing'}
+              {language === 'ml' ? 'Google സുരക്ഷിത ബ്രൗസിംഗ്' : 'Google Safe Browsing'}
             </h3>
             <p className={clsx(
               "text-sm",
@@ -264,7 +231,14 @@ export const UrlAnalysisCard: FC<UrlAnalysisCardProps> = ({
           <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
             <div className="flex items-center text-gray-500 dark:text-gray-400 text-sm">
               <Link className="w-4 h-4 mr-2" />
-              <span className="break-all">{urlAnalysis.url}</span>
+              <a 
+                href={urlAnalysis.url} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-blue-600 dark:text-blue-400 hover:underline break-all"
+              >
+                {urlAnalysis.url}
+              </a>
             </div>
           </div>
         </div>
