@@ -116,7 +116,7 @@ export const ResultCard: FC<ResultCardProps> = ({
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      className="w-full max-w-4xl mx-auto relative space-y-4"
+      className="w-full max-w-full mx-auto relative space-y-4"
     >
       {/* Swipe Indicator - Updated to point to image analysis */}
       <motion.div
