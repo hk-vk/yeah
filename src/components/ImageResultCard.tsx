@@ -425,7 +425,7 @@ export const ImageResultCard: FC<ImageResultCardProps> = ({ result, imageUrl, ex
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      className="w-full max-w-2xl mx-auto relative"
+      className="w-full max-w-4xl mx-auto relative"
     >
       {/* Swipe Indicator */}
       <motion.div

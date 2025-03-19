@@ -43,7 +43,7 @@ export const UrlAnalysisCard: FC<UrlAnalysisCardProps> = ({
         dragConstraints={{ left: 0, right: 0 }}
         dragElastic={0.2}
         onDragEnd={handleDragEnd}
-        className="w-full max-w-2xl mx-auto relative"
+        className="w-full max-w-4xl mx-auto relative"
       >
         <GlassCard className="relative overflow-hidden backdrop-blur-sm">
           <div className="absolute inset-0 bg-gradient-to-br from-white/50 to-white/30 dark:from-gray-800/50 dark:to-gray-800/30" />
@@ -103,7 +103,7 @@ export const UrlAnalysisCard: FC<UrlAnalysisCardProps> = ({
       dragConstraints={{ left: 0, right: 0 }}
       dragElastic={0.2}
       onDragEnd={handleDragEnd}
-      className="w-full max-w-2xl mx-auto relative"
+      className="w-full max-w-4xl mx-auto relative"
     >
       {showNavigationHints && (
         <>
