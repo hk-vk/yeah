@@ -6,8 +6,6 @@ import { TrendingNews } from '../types/trending';
 import { useLanguage } from '../contexts/LanguageContext';
 import { translations } from '../locales/translations';
 import { GlassCard } from '../components/common/GlassCard';
-import { SupabaseService } from '../services/supabaseService';
-import { useNavigate } from 'react-router-dom';
 import clsx from 'clsx';
 
 export const TrendingPage: React.FC = () => {
@@ -17,15 +15,37 @@ export const TrendingPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const { language } = useLanguage();
   const isMalayalam = language === 'ml';
-  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchTrendingNews = async () => {
       try {
         setIsLoading(true);
-        const data = await SupabaseService.getTrendingNews();
-        setTrendingNews(data);
-        setFilteredNews(data);
+        // Replace with actual API call
+        const mockData: TrendingNews[] = [
+          {
+            id: '1',
+            title: 'മുല്ലപ്പെരിയാർ ഡാം പൊട്ടി',
+            searchCount: 1500,
+            reliability: 'suspicious',
+            date: new Date().toISOString()
+          },
+          {
+            id: '2',
+            title: '2024 ഓസ്കർ ആവാർഡുകൾ പ്രഖ്യാപിച്ചു. മികച്ച ഓൾറൌണ്ടർ സന്തോഷ് പണ്ഡിറ്റ്',
+            searchCount: 1200,
+            reliability: 'suspicious',
+            date: new Date().toISOString()
+          },
+          {
+            id: '3',
+            title: 'ഗവൺമെന്റ് എൻജിനിയറിങ് കോളേജ് ഇടുക്കിക്കു എൻബിഎ അക്രഡിറ്റേഷൻ ലഭിച്ചു',
+            searchCount: 1000,
+            reliability: 'reliable',
+            date: new Date().toISOString()
+          }
+        ];
+        setTrendingNews(mockData);
+        setFilteredNews(mockData);
       } catch (error) {
         console.error('Error fetching trending news:', error);
       } finally {
@@ -49,16 +69,6 @@ export const TrendingPage: React.FC = () => {
     );
     setFilteredNews(filtered);
   }, [searchQuery, trendingNews]);
-
-  const handleNewsClick = (news: TrendingNews) => {
-    // Navigate to analyze page with the news content
-    navigate('/analyze', { 
-      state: { 
-        content: news.title,
-        type: news.title.startsWith('http') ? 'url' : 'text'
-      } 
-    });
-  };
 
   return (
     <motion.div
@@ -139,11 +149,16 @@ export const TrendingPage: React.FC = () => {
         </div>
 
         {/* Content */}
-        <TrendingList 
-          trendingNews={filteredNews} 
-          isLoading={isLoading} 
-          onItemClick={handleNewsClick}
-        />
+        <div className="relative">
+          <TrendingList 
+            trendingNews={filteredNews} 
+            isLoading={isLoading} 
+            onItemClick={(news) => {
+              // Handle item click
+              console.log('Clicked news:', news);
+            }}
+          />
+        </div>
       </div>
     </motion.div>
   );
