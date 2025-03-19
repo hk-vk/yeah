@@ -1,6 +1,6 @@
 import { FC } from 'react';
 import { motion } from 'framer-motion';
-import { ShieldCheck, ShieldAlert, AlertCircle, CheckCircle, BarChart2 } from 'lucide-react';
+import { ShieldCheck, ShieldAlert, FileText, Image as ImageIcon, Globe, Search } from 'lucide-react';
 import { TextAnalysisResult, ImageAnalysisResult } from '../types/analysis';
 import { useLanguage } from '../contexts/LanguageContext';
 import { translations } from '../locales/translations';
@@ -22,99 +22,49 @@ export const ComprehensiveAnalysisCard: FC<ComprehensiveAnalysisCardProps> = ({
   const t = translations[language];
   const isMalayalam = language === 'ml';
 
-  // Calculate weighted result (text: 40%, image: 30%, url: 30%)
+  // Calculate weighted result
   const calculateOverallResult = () => {
     let totalWeight = 0;
-    let weightedSum = 0;
+    let weightedScore = 0;
 
+    // Text Analysis (45%)
     if (textAnalysis) {
-      weightedSum += (textAnalysis.ISFAKE === 1 ? 1 : 0) * 0.4;
-      totalWeight += 0.4;
+      totalWeight += 45;
+      weightedScore += (textAnalysis.ISFAKE === 0 ? 100 : 0) * 0.45;
     }
+
+    // Image Analysis (25%)
     if (imageAnalysis) {
-      // For image analysis, consider verdict and score
-      const isImageFake = imageAnalysis.verdict.toLowerCase().includes('fake') || 
-                         imageAnalysis.score < 0.5 ||
-                         imageAnalysis.details.ai_generated ||
-                         imageAnalysis.details.deepfake;
-      weightedSum += (isImageFake ? 1 : 0) * 0.3;
-      totalWeight += 0.3;
+      totalWeight += 25;
+      weightedScore += (!imageAnalysis.verdict.toLowerCase().includes('fake') ? 100 : 0) * 0.25;
     }
+
+    // URL Analysis (10%)
     if (urlAnalysis) {
-      // For URL analysis, consider trust_score and is_trustworthy
-      const isUrlFake = !urlAnalysis.is_trustworthy || urlAnalysis.trust_score < 0.5;
-      weightedSum += (isUrlFake ? 1 : 0) * 0.3;
-      totalWeight += 0.3;
+      totalWeight += 10;
+      weightedScore += (urlAnalysis.is_trustworthy ? 100 : 0) * 0.10;
     }
 
-    // If no analysis available, return null
-    if (totalWeight === 0) return null;
+    // Image Text Analysis (20%)
+    if (imageAnalysis?.details?.text_analysis) {
+      totalWeight += 20;
+      const textTrustworthy = imageAnalysis.details.text_analysis.reverse_search?.reliability_score || 0;
+      weightedScore += (textTrustworthy >= 50 ? 100 : 0) * 0.20;
+    }
 
-    // Normalize the result
-    const normalizedResult = weightedSum / totalWeight;
-    return normalizedResult >= 0.5 ? 1 : 0;
+    // Return final result
+    return totalWeight > 0 ? weightedScore / (totalWeight / 100) : 0;
   };
 
-  const overallResult = calculateOverallResult();
-
-  // Generate comprehensive explanation
-  const generateExplanation = (isML: boolean) => {
-    if (overallResult === null) {
-      return isML 
-        ? 'വിശകലന ഫലങ്ങൾ ലഭ്യമല്ല'
-        : 'No analysis results available';
-    }
-
-    const explanations = [];
-    if (textAnalysis) {
-      explanations.push(isML ? textAnalysis.EXPLANATION_ML : textAnalysis.EXPLANATION_EN);
-    }
-    if (imageAnalysis) {
-      // For image analysis, create explanation from verdict and details
-      const imageExplanation = isML
-        ? `ചിത്രം ${imageAnalysis.verdict.toLowerCase().includes('fake') ? 'വ്യാജമാണ്' : 'യഥാർത്ഥമാണ്'}. ${
-            imageAnalysis.details.ai_generated ? 'AI ഉപയോഗിച്ച് നിർമ്മിച്ചതാണ്. ' : ''
-          }${imageAnalysis.details.deepfake ? 'ഡീപ്ഫേക്ക് സാങ്കേതികവിദ്യ ഉപയോഗിച്ചിട്ടുണ്ട്. ' : ''}`
-        : `The image appears to be ${imageAnalysis.verdict}. ${
-            imageAnalysis.details.ai_generated ? 'It was generated using AI. ' : ''
-          }${imageAnalysis.details.deepfake ? 'Deepfake technology was detected. ' : ''}`;
-      explanations.push(imageExplanation);
-    }
-    if (urlAnalysis) {
-      // For URL analysis, create explanation from trust reasons and final decision
-      const urlExplanation = isML
-        ? `URL ${urlAnalysis.is_trustworthy ? 'വിശ്വസനീയമാണ്' : 'വിശ്വസനീയമല്ല'}. ${
-            urlAnalysis.trust_reasons.join('. ')
-          }`
-        : `The URL is ${urlAnalysis.is_trustworthy ? 'trustworthy' : 'not trustworthy'}. ${
-            urlAnalysis.trust_reasons.join('. ')
-          }`;
-      explanations.push(urlExplanation);
-    }
-
-    return explanations.join(' ');
-  };
-
-  if (overallResult === null) {
-    return null;
-  }
+  const overallScore = calculateOverallResult();
+  const isReliable = overallScore >= 50;
 
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      className="w-full max-w-2xl mx-auto relative space-y-4"
+      className="w-full max-w-2xl mx-auto"
     >
-      <div className="absolute top-4 right-4 z-10">
-        <span className={clsx(
-          "px-3 py-1 rounded-full text-sm font-medium",
-          "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-200",
-          "border border-purple-200 dark:border-purple-800/30"
-        )}>
-          {language === 'ml' ? 'സമഗ്ര വിശകലനം' : 'Comprehensive Analysis'}
-        </span>
-      </div>
-
       <GlassCard className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-white/50 to-white/30 dark:from-gray-800/50 dark:to-gray-800/30" />
         <div className={clsx(
@@ -123,7 +73,7 @@ export const ComprehensiveAnalysisCard: FC<ComprehensiveAnalysisCardProps> = ({
         )}>
           {/* Main Analysis Result */}
           <div className="flex items-center justify-center mb-6">
-            {overallResult === 0 ? (
+            {isReliable ? (
               <motion.div
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
@@ -150,76 +100,98 @@ export const ComprehensiveAnalysisCard: FC<ComprehensiveAnalysisCardProps> = ({
             )}
           </div>
 
-          {/* Explanation */}
-          <div className="mb-6">
-            <h3 className={clsx(
-              "text-lg font-semibold mb-2 text-gray-800 dark:text-gray-100 flex items-center",
-              isMalayalam && "text-xl leading-relaxed"
-            )}>
-              {overallResult === 0 ? (
-                <CheckCircle className="w-5 h-5 mr-2 text-green-500 dark:text-green-400" />
-              ) : (
-                <AlertCircle className="w-5 h-5 mr-2 text-red-500 dark:text-red-400" />
-              )}
-              {language === 'ml' ? 'സമഗ്ര വിശകലന സംഗ്രഹം' : 'Comprehensive Analysis Summary'}
-            </h3>
-            <p className={clsx(
-              "text-gray-600 dark:text-gray-300 mb-3",
-              isMalayalam && "text-lg leading-loose"
-            )}>
-              {generateExplanation(isMalayalam)}
-            </p>
+          {/* Analysis Breakdown */}
+          <div className="space-y-4">
+            {/* Text Analysis */}
+            {textAnalysis && (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <Search className="w-5 h-5 mr-2" />
+                  <span>{t.textAnalysisWeight}</span>
+                </div>
+                <span className={clsx(
+                  "font-medium",
+                  textAnalysis.ISFAKE === 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
+                )}>
+                  {textAnalysis.ISFAKE === 0 ? t.reliable : t.suspicious} (45%)
+                </span>
+              </div>
+            )}
+
+            {/* Image Analysis */}
+            {imageAnalysis && (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <ImageIcon className="w-5 h-5 mr-2" />
+                  <span>{t.imageAnalysisWeight}</span>
+                </div>
+                <span className={clsx(
+                  "font-medium",
+                  !imageAnalysis.verdict.toLowerCase().includes('fake') ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
+                )}>
+                  {!imageAnalysis.verdict.toLowerCase().includes('fake') ? t.reliable : t.suspicious} (25%)
+                </span>
+              </div>
+            )}
+
+            {/* URL Analysis */}
+            {urlAnalysis && (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <Globe className="w-5 h-5 mr-2" />
+                  <span>{t.urlAnalysisWeight}</span>
+                </div>
+                <span className={clsx(
+                  "font-medium",
+                  urlAnalysis.is_trustworthy ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
+                )}>
+                  {urlAnalysis.is_trustworthy ? t.reliable : t.suspicious} (10%)
+                </span>
+              </div>
+            )}
+
+            {/* Image Text Analysis */}
+            {imageAnalysis?.details?.text_analysis && (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <FileText className="w-5 h-5 mr-2" />
+                  <span>{t.imageTextAnalysisWeight}</span>
+                </div>
+                <span className={clsx(
+                  "font-medium",
+                  (imageAnalysis.details.text_analysis.reverse_search?.reliability_score || 0) >= 50 
+                    ? "text-green-600 dark:text-green-400" 
+                    : "text-red-600 dark:text-red-400"
+                )}>
+                  {(imageAnalysis.details.text_analysis.reverse_search?.reliability_score || 0) >= 50 
+                    ? t.reliable 
+                    : t.suspicious} (20%)
+                </span>
+              </div>
+            )}
           </div>
 
-          {/* Analysis Breakdown */}
-          <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
-            <h3 className={clsx(
-              "text-lg font-semibold mb-4 text-gray-800 dark:text-gray-100 flex items-center",
-              isMalayalam && "text-xl leading-relaxed"
-            )}>
-              <BarChart2 className="w-5 h-5 mr-2" />
-              {language === 'ml' ? 'വിശകലന വിശദാംശങ്ങൾ' : 'Analysis Breakdown'}
-            </h3>
-            <div className="space-y-3">
-              {textAnalysis && (
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600 dark:text-gray-300">
-                    {language === 'ml' ? 'വാചക വിശകലനം' : 'Text Analysis'}
-                  </span>
-                  <span className={clsx(
-                    "font-medium",
-                    textAnalysis.ISFAKE === 0 ? "text-green-500" : "text-red-500"
-                  )}>
-                    {textAnalysis.ISFAKE === 0 ? t.reliable : t.suspicious} (40%)
-                  </span>
-                </div>
-              )}
-              {imageAnalysis && (
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600 dark:text-gray-300">
-                    {language === 'ml' ? 'ചിത്ര വിശകലനം' : 'Image Analysis'}
-                  </span>
-                  <span className={clsx(
-                    "font-medium",
-                    !imageAnalysis.verdict.toLowerCase().includes('fake') ? "text-green-500" : "text-red-500"
-                  )}>
-                    {!imageAnalysis.verdict.toLowerCase().includes('fake') ? t.reliable : t.suspicious} (30%)
-                  </span>
-                </div>
-              )}
-              {urlAnalysis && (
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600 dark:text-gray-300">
-                    {language === 'ml' ? 'URL വിശകലനം' : 'URL Analysis'}
-                  </span>
-                  <span className={clsx(
-                    "font-medium",
-                    urlAnalysis.is_trustworthy ? "text-green-500" : "text-red-500"
-                  )}>
-                    {urlAnalysis.is_trustworthy ? t.reliable : t.suspicious} (30%)
-                  </span>
-                </div>
-              )}
+          {/* Overall Score */}
+          <div className="mt-6">
+            <div className="flex justify-between mb-1">
+              <span className="text-sm font-medium">
+                {t.confidenceScore}
+              </span>
+              <span className={clsx(
+                "text-sm font-medium",
+                isReliable ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
+              )}>
+                {Math.round(overallScore)}%
+              </span>
+            </div>
+            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
+              <div
+                className={clsx(
+                  "h-2.5 rounded-full transition-all duration-500",
+                  isReliable ? "bg-green-500" : "bg-red-500"
+                )}
+                style={{ width: `${overallScore}%` }}
+              />
             </div>
           </div>
         </div>
