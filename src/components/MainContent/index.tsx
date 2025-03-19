@@ -362,7 +362,19 @@ export function MainContent() {
   };
 
   return (
-    <div className="relative space-y-8 max-w-4xl mx-auto">
+    <div 
+      className="relative min-h-screen"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'ArrowRight') {
+          e.preventDefault();
+          navigateResults('next');
+        } else if (e.key === 'ArrowLeft') {
+          e.preventDefault();
+          navigateResults('prev');
+        }
+      }}
+    >
       <motion.div
         className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-purple-500/5 to-indigo-500/5 rounded-3xl blur-3xl -z-10"
         animate={{
