@@ -449,12 +449,12 @@ export const analyzeService = {
             try {
                 // Use direct fetch to localhost:8000 instead of connectionManager
                 const response = await fetch('http://localhost:8000/api/writing-style', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
                         'Accept': 'application/json',
-                    },
-                    body: JSON.stringify({ content }),
+                        },
+                        body: JSON.stringify({ content }),
                 });
 
                 if (!response.ok) {

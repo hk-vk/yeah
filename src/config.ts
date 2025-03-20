@@ -1,5 +1,5 @@
 export const API_CONFIG = {
-  BASE_URL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000',
+  BASE_URL: 'http://localhost:8000',
   SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL,
   SUPABASE_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY,
   ENDPOINTS: {
@@ -14,9 +14,9 @@ export const API_CONFIG = {
   }
 };
 
-// Validate required environment variables
-if (!API_CONFIG.SUPABASE_URL || !API_CONFIG.SUPABASE_KEY) {
-  throw new Error('Missing required Supabase environment variables');
+// Add validation for required environment variables
+if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
+  throw new Error('Required Supabase environment variables are not set');
 }
 
 export const API_BASE_URL = API_CONFIG.BASE_URL;
