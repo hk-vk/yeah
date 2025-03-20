@@ -6,12 +6,14 @@ import { TrendingNews } from '../types/trending';
 import { useLanguage } from '../contexts/LanguageContext';
 import { translations } from '../locales/translations';
 import { GlassCard } from '../components/common/GlassCard';
+import { SupabaseService } from '../services/supabaseService';
 import clsx from 'clsx';
 
 export const TrendingPage: React.FC = () => {
   const [trendingNews, setTrendingNews] = useState<TrendingNews[]>([]);
   const [filteredNews, setFilteredNews] = useState<TrendingNews[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const { language } = useLanguage();
   const isMalayalam = language === 'ml';
@@ -20,41 +22,22 @@ export const TrendingPage: React.FC = () => {
     const fetchTrendingNews = async () => {
       try {
         setIsLoading(true);
-        // Replace with actual API call
-        const mockData: TrendingNews[] = [
-          {
-            id: '1',
-            title: 'മുല്ലപ്പെരിയാർ ഡാം പൊട്ടി',
-            searchCount: 1500,
-            reliability: 'suspicious',
-            date: new Date().toISOString()
-          },
-          {
-            id: '2',
-            title: '2024 ഓസ്കർ ആവാർഡുകൾ പ്രഖ്യാപിച്ചു. മികച്ച ഓൾറൌണ്ടർ സന്തോഷ് പണ്ഡിറ്റ്',
-            searchCount: 1200,
-            reliability: 'suspicious',
-            date: new Date().toISOString()
-          },
-          {
-            id: '3',
-            title: 'ഗവൺമെന്റ് എൻജിനിയറിങ് കോളേജ് ഇടുക്കിക്കു എൻബിഎ അക്രഡിറ്റേഷൻ ലഭിച്ചു',
-            searchCount: 1000,
-            reliability: 'reliable',
-            date: new Date().toISOString()
-          }
-        ];
-        setTrendingNews(mockData);
-        setFilteredNews(mockData);
+        setError(null);
+        const data = await SupabaseService.getTrendingNews();
+        setTrendingNews(data);
+        setFilteredNews(data);
       } catch (error) {
         console.error('Error fetching trending news:', error);
+        setError(language === 'ml' 
+          ? 'വിവരങ്ങൾ ലഭ്യമാക്കുന്നതിൽ പിശക് സംഭവിച്ചു'
+          : 'Error fetching trending news');
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchTrendingNews();
-  }, []);
+  }, [language]);
 
   // Filter news based on search query
   useEffect(() => {
@@ -150,14 +133,29 @@ export const TrendingPage: React.FC = () => {
 
         {/* Content */}
         <div className="relative">
-          <TrendingList 
-            trendingNews={filteredNews} 
-            isLoading={isLoading} 
-            onItemClick={(news) => {
-              // Handle item click
-              console.log('Clicked news:', news);
-            }}
-          />
+          {error ? (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-center p-8"
+            >
+              <p className={clsx(
+                "text-red-500 dark:text-red-400",
+                isMalayalam && "text-lg"
+              )}>
+                {error}
+              </p>
+            </motion.div>
+          ) : (
+            <TrendingList 
+              trendingNews={filteredNews} 
+              isLoading={isLoading} 
+              onItemClick={(news) => {
+                // Handle item click - you can add navigation or other actions here
+                console.log('Clicked news:', news);
+              }}
+            />
+          )}
         </div>
       </div>
     </motion.div>
