@@ -396,7 +396,7 @@ export function MainContent() {
   // Calculate total number of results
   const getTotalResults = () => {
     let count = 0;
-    if (textResult && imageResult) count++; // Comprehensive Analysis
+    if (textResult?.type === 'url' || (textResult && imageResult)) count++; // Comprehensive Analysis
     if (textResult) count++; // Text Analysis
     if (imageResult) count++; // Image Analysis
     if (textResult?.type === 'url' && textResult?.urlAnalysis) count++; // URL Analysis
@@ -587,7 +587,7 @@ export function MainContent() {
                   <div className="flex-grow w-full" style={{ height: '1px' }}></div>
                   
                   {/* Comprehensive Analysis Card */}
-                  {textResult && imageResult && (
+                  {(textResult?.type === 'url' || (textResult && imageResult)) && (
                     <div 
                       className={clsx(
                         "transition-all duration-500 w-full max-w-4xl mx-auto",
@@ -607,7 +607,8 @@ export function MainContent() {
                       <ComprehensiveAnalysisCard
                         textAnalysis={textResult}
                         imageAnalysis={imageResult}
-                        urlAnalysis={textResult.urlAnalysis}
+                        urlAnalysis={textResult?.urlAnalysis}
+                        extractedTextFromImage={extractedText}
                       />
                     </div>
                   )}

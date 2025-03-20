@@ -1,6 +1,6 @@
 import { FC } from 'react';
 import { motion } from 'framer-motion';
-import { ShieldCheck, ShieldAlert, AlertCircle, CheckCircle, BarChart2 } from 'lucide-react';
+import { ShieldCheck, ShieldAlert, AlertCircle, CheckCircle, BarChart2, Link, FileText, Image as ImageIcon } from 'lucide-react';
 import { TextAnalysisResult, ImageAnalysisResult } from '../types/analysis';
 import { useLanguage } from '../contexts/LanguageContext';
 import { translations } from '../locales/translations';
@@ -10,39 +10,31 @@ import React from 'react';
 
 interface ComprehensiveAnalysisCardProps {
   textAnalysis?: TextAnalysisResult | null;
-  imageAnalysis?: {
-    type: 'image' | 'text_image';
-    verdict: string;
-    score: number;
-    details: {
-      ai_generated: boolean;
-      reverse_search: {
-        found: boolean;
-        matches?: any[];
-      };
-      deepfake: boolean;
-      tampering_analysis: boolean;
-      image_caption: string;
-      text_analysis?: {
-        user_text: string;
-        extracted_text: string;
-        mismatch: boolean;
-        context_similarity: number;
-        context_mismatch: boolean;
-      };
-    };
-  } | null;
-  urlAnalysis?: TextAnalysisResult['urlAnalysis'];
+  imageAnalysis?: ImageAnalysisResult | null;
+  urlAnalysis?: TextAnalysisResult['urlAnalysis'] | null;
+  extractedTextFromImage?: string;
 }
 
 export const ComprehensiveAnalysisCard: FC<ComprehensiveAnalysisCardProps> = ({
   textAnalysis,
   imageAnalysis,
-  urlAnalysis
+  urlAnalysis,
+  extractedTextFromImage
 }) => {
   const { language } = useLanguage();
   const t = translations[language];
   const isMalayalam = language === 'ml';
+
+  // First check if we have anything to analyze
+  if (!textAnalysis && !imageAnalysis && !urlAnalysis) {
+    return null;
+  }
+
+  // Determine analysis priorities
+  const hasUrlAnalysis = !!urlAnalysis;
+  const hasTextAnalysis = !!textAnalysis;
+  const hasImageAnalysis = !!imageAnalysis;
+  const hasExtractedText = !!extractedTextFromImage;
 
   // Calculate weighted result (text: 40%, image: 30%, url: 30%)
   const calculateOverallResult = () => {
@@ -117,6 +109,41 @@ export const ComprehensiveAnalysisCard: FC<ComprehensiveAnalysisCardProps> = ({
     return explanations.join(' ');
   };
 
+  // Render analysis status icons
+  const renderAnalysisStatus = () => {
+    return (
+      <div className="flex items-center gap-3 mb-4">
+        {hasUrlAnalysis && (
+          <div className={clsx(
+            "flex items-center gap-1 text-sm border px-2 py-1 rounded-md",
+            "text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600"
+          )}>
+            <Link className="w-4 h-4" />
+            <span>{language === 'ml' ? 'URL' : 'URL'}</span>
+          </div>
+        )}
+        {hasTextAnalysis && (
+          <div className={clsx(
+            "flex items-center gap-1 text-sm border px-2 py-1 rounded-md",
+            "text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600"
+          )}>
+            <FileText className="w-4 h-4" />
+            <span>{language === 'ml' ? 'വാചകം' : 'Text'}</span>
+          </div>
+        )}
+        {hasImageAnalysis && (
+          <div className={clsx(
+            "flex items-center gap-1 text-sm border px-2 py-1 rounded-md",
+            "text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600"
+          )}>
+            <ImageIcon className="w-4 h-4" />
+            <span>{language === 'ml' ? 'ചിത്രം' : 'Image'}</span>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   if (overallResult === null) {
     return null;
   }
@@ -143,6 +170,9 @@ export const ComprehensiveAnalysisCard: FC<ComprehensiveAnalysisCardProps> = ({
           "relative p-6 space-y-6",
           isMalayalam && "malayalam-text"
         )}>
+          {/* Analysis Status */}
+          {renderAnalysisStatus()}
+
           {/* Main Analysis Result */}
           <div className="flex items-center justify-center mb-6">
             {overallResult === 0 ? (
@@ -171,6 +201,25 @@ export const ComprehensiveAnalysisCard: FC<ComprehensiveAnalysisCardProps> = ({
               </motion.div>
             )}
           </div>
+
+          {/* Extracted Text Display */}
+          {hasExtractedText && (
+            <div className="mb-4 bg-blue-50 dark:bg-blue-900/20 p-3 rounded-md">
+              <p className={clsx(
+                "text-blue-700 dark:text-blue-300 flex items-center",
+                isMalayalam && "text-base"
+              )}>
+                <FileText className="w-4 h-4 mr-2" />
+                {language === 'ml' ? 'ചിത്രത്തിൽ നിന്ന് തിരിച്ചറിഞ്ഞ വാചകം' : 'Text extracted from image'}
+              </p>
+              <p className={clsx(
+                "mt-2 text-gray-700 dark:text-gray-300 border-l-2 border-blue-300 pl-3",
+                isMalayalam && "text-base leading-relaxed"
+              )}>
+                {extractedTextFromImage}
+              </p>
+            </div>
+          )}
 
           {/* Explanation */}
           <div className="mb-6">
