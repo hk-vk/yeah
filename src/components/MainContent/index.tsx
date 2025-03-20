@@ -317,7 +317,7 @@ export function MainContent() {
 
   const announceCardChange = (type: 'comprehensive' | 'image' | 'text' | 'url') => {
     // Update announcement based on type
-    const message = type === 'image' 
+    const message = type === 'image'
       ? language === 'ml' ? 'ചിത്ര വിശകലനം കാണിക്കുന്നു' : 'Showing image analysis'
       : type === 'url'
         ? language === 'ml' ? 'URL വിശകലനം കാണിക്കുന്നു' : 'Showing URL analysis'
@@ -386,7 +386,7 @@ export function MainContent() {
         navigateResults('prev');
       }
     };
-    
+
     window.addEventListener('keydown', handleKeyDown);
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
@@ -621,22 +621,22 @@ export function MainContent() {
                         activeResultIndex === 1 ? "opacity-100 block" : "opacity-0 hidden"
                       )}
                       tabIndex={activeResultIndex === 1 ? 0 : -1}
-                      onKeyDown={(e) => {
-                        if (e.key === 'ArrowRight') {
-                          e.preventDefault();
-                          navigateResults('next');
+                    onKeyDown={(e) => {
+                      if (e.key === 'ArrowRight') {
+                        e.preventDefault();
+                        navigateResults('next');
                         } else if (e.key === 'ArrowLeft') {
                           e.preventDefault();
                           navigateResults('prev');
-                        }
-                      }}
-                    >
-                      <ResultCard 
-                        result={textResult} 
-                        content={currentContent}
+                      }
+                    }}
+                  >
+                    <ResultCard 
+                      result={textResult} 
+                      content={currentContent}
                         extractedFromImage={false}
-                      />
-                    </div>
+                    />
+                  </div>
                   )}
 
                   {/* Image Analysis Card */}
@@ -647,22 +647,22 @@ export function MainContent() {
                         activeResultIndex === 2 ? "opacity-100 block" : "opacity-0 hidden"
                       )}
                       tabIndex={activeResultIndex === 2 ? 0 : -1}
-                      onKeyDown={(e) => {
+                    onKeyDown={(e) => {
                         if (e.key === 'ArrowRight') {
                           e.preventDefault();
                           navigateResults('next');
                         } else if (e.key === 'ArrowLeft') {
-                          e.preventDefault();
-                          navigateResults('prev');
-                        }
-                      }}
-                    >
-                      <ImageResultCard
-                        result={imageResult}
-                        imageUrl={currentImageContent}
-                        extractedText={extractedText}
-                      />
-                    </div>
+                        e.preventDefault();
+                        navigateResults('prev');
+                      }
+                    }}
+                  >
+                    <ImageResultCard 
+                      result={imageResult} 
+                      imageUrl={currentImageContent} 
+                      extractedText={extractedText}
+                    />
+                  </div>
                   )}
 
                   {/* URL Analysis Card */}

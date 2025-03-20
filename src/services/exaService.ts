@@ -1,7 +1,12 @@
 import Exa from 'exa-js';
 
 // Initialize Exa client with API key from environment variables
-const EXA_API_KEY = import.meta.env.VITE_EXA_API_KEY || 'f719f358-7ec7-4098-9c0f-07698598b95e';
+const EXA_API_KEY = import.meta.env.VITE_EXA_API_KEY;
+
+if (!EXA_API_KEY) {
+  throw new Error('EXA_API_KEY is not defined in environment variables');
+}
+
 const exa = new Exa(EXA_API_KEY);
 
 // Define types for Exa API response based on actual response format
