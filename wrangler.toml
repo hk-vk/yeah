@@ -5,10 +5,16 @@ publish = "dist"
 [site]
 bucket = "dist"
 
+# The production environment will be automatically detected by Cloudflare
 [env.production]
 name = "yeahya"
-routes = ["yeahya.pages.dev/*"]
 
+# Environment variables will be loaded from Cloudflare Pages dashboard
+# These are fallbacks in case they're not set in the dashboard
 [env.production.vars]
 VITE_API_URL = "https://localhost:8000/api"
-VITE_SUPABASE_URL = "https://cxjdkqkzmtyudkwwhelq.supabase.co" 
+VITE_SUPABASE_URL = "https://cxjdkqkzmtyudkwwhelq.supabase.co"
+
+# Preview environment (for branch deployments)
+[env.preview]
+name = "yeahyeah-preview" 
