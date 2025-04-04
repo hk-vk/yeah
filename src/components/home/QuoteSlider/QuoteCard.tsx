@@ -18,10 +18,10 @@ export const QuoteCard = memo(function QuoteCard({ text, author, index }: QuoteC
         duration: 0.4,
         ease: "easeOut"
       }}
-      className="relative p-6 pt-10 bg-white/80 dark:bg-gray-800/80 rounded-xl shadow-xl backdrop-blur-lg will-change-transform"
+      className="relative p-6 pt-14 bg-white/80 dark:bg-gray-800/80 rounded-xl shadow-xl backdrop-blur-lg will-change-transform"
     >
       <div 
-        className="absolute top-4 left-4 transform-gpu"
+        className="absolute top-6 left-6 transform-gpu"
         style={{ willChange: 'transform' }}
       >
         <div className="p-2 sm:p-3 bg-blue-600 rounded-lg shadow-lg">
@@ -29,7 +29,7 @@ export const QuoteCard = memo(function QuoteCard({ text, author, index }: QuoteC
         </div>
       </div>
       
-      <div className="mt-2 sm:mt-4">
+      <div className="pl-16">
         <p className="text-base sm:text-lg text-gray-800 dark:text-gray-200 leading-relaxed line-clamp-4 sm:line-clamp-none">
           {text}
         </p>
