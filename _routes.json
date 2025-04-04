@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "include": ["/*"],
+  "exclude": [
+    "/assets/*",
+    "/fonts/*",
+    "/*.css",
+    "/*.js",
+    "/*.json",
+    "/*.svg",
+    "/*.png",
+    "/*.ico",
+    "/mal_train.csv"
+  ],
+  "routes": [
+    {
+      "src": "/*",
+      "dest": "/index.html"
+    }
+  ]
+} 
