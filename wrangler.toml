@@ -8,18 +8,19 @@ bucket = "dist"
 # The production environment
 [env.production]
 name = "yeahya"
+workers_dev = true
+route = "yeahya.pages.dev/*"
 
-# Environment variables will be set in Cloudflare Pages dashboard
+# Environment variables will be set through wrangler secrets
 [env.production.vars]
-# Placeholder values - set these in Cloudflare Pages dashboard
 VITE_API_URL = ""
 VITE_SUPABASE_URL = ""
 
 # Preview environment (for branch deployments)
 [env.preview]
 name = "yeahya-preview"
+workers_dev = true
 
 [env.preview.vars]
-# Placeholder values - set these in Cloudflare Pages dashboard
 VITE_API_URL = ""
 VITE_SUPABASE_URL = "" 
