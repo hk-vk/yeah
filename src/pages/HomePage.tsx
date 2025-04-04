@@ -55,7 +55,7 @@ export default function HomePage() {
   };
 
   return (
-    <div className="space-y-16 sm:space-y-24 overflow-x-hidden px-4 sm:px-0">
+    <div className="space-y-16 sm:space-y-24 px-4 sm:px-0">
       <motion.section 
         className="text-center pt-8 sm:pt-12"
         initial="hidden"
