@@ -53,7 +53,7 @@ export function Stats() {
 
   return (
     <motion.section 
-      className="py-12 relative"
+      className="py-12 px-4 sm:px-6 relative"
       style={{ scale, opacity }}
       initial={{ opacity: 0 }}
       whileInView={{ opacity: 1 }}
@@ -72,11 +72,11 @@ export function Stats() {
               boxShadow: "0 4px 15px rgba(0, 0, 0, 0.1)",
               transition: { duration: 0.2 }
             }}
-            className="text-center p-6 bg-white/50 dark:bg-gray-800/50 rounded-xl backdrop-blur-sm 
+            className="text-center p-4 sm:p-6 bg-white/50 dark:bg-gray-800/50 rounded-xl backdrop-blur-sm 
                        relative overflow-hidden group transition-all duration-300"
           >
             <motion.div
-              className="text-4xl font-bold text-blue-600 dark:text-blue-400 mb-2"
+              className="text-3xl sm:text-4xl font-bold text-blue-600 dark:text-blue-400 mb-2"
               initial={{ scale: 0.5, opacity: 0 }}
               whileInView={{ scale: 1, opacity: 1 }}
               viewport={{ once: true }}
@@ -86,7 +86,7 @@ export function Stats() {
             </motion.div>
 
             <motion.div
-              className="text-lg font-semibold text-gray-900 dark:text-white mb-1"
+              className="text-md sm:text-lg font-semibold text-gray-900 dark:text-white mb-1"
               initial={{ y: 20, opacity: 0 }}
               whileInView={{ y: 0, opacity: 1 }}
               viewport={{ once: true }}
@@ -96,7 +96,7 @@ export function Stats() {
             </motion.div>
 
             <motion.div
-              className="text-sm text-gray-600 dark:text-gray-300"
+              className="text-xs sm:text-sm text-gray-600 dark:text-gray-300"
               initial={{ y: 20, opacity: 0 }}
               whileInView={{ y: 0, opacity: 1 }}
               viewport={{ once: true }}

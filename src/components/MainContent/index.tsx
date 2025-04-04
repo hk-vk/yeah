@@ -48,12 +48,10 @@ export function MainContent() {
   const [activeResultIndex, setActiveResultIndex] = useState(0);
   const { language } = useLanguage();
   const { user } = useAuth();
-  const cardRefs = {
-    image: useRef<HTMLDivElement>(null),
-    text: useRef<HTMLDivElement>(null),
-    url: useRef<HTMLDivElement>(null)
-  };
   const [urlError, setUrlError] = useState<{ message: string; url: string } | null>(null);
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
+  const [analysisHistoryKey, setAnalysisHistoryKey] = useState(Date.now());
 
   // Helper function to convert undefined to null for ImageResultCard
   const imageUrlForCard = (url: string | undefined): string | null => url || null;
@@ -272,47 +270,9 @@ export function MainContent() {
   );
 
   const navigateResults = (direction: 'next' | 'prev') => {
-    if (!hasMultipleResults) return;
-    
-    // Calculate total number of results
-    const totalResults = getTotalResults();
-    
-    // Calculate new index with wrap-around
-    const newIndex = direction === 'next' 
-      ? (activeResultIndex + 1) % totalResults
-      : (activeResultIndex - 1 + totalResults) % totalResults;
-    
-    setActiveResultIndex(newIndex);
-    
-    // Focus appropriate card based on index
-    switch(newIndex) {
-      case 0:
-        // Comprehensive Analysis
-        cardRefs.text.current?.focus();
-        announceCardChange('comprehensive');
-        break;
-      case 1:
-        // Text Analysis
-        cardRefs.text.current?.focus();
-        announceCardChange('text');
-        break;
-      case 2:
-        if (textResult?.type === 'url' && textResult?.urlAnalysis) {
-          // URL Analysis
-          cardRefs.url.current?.focus();
-          announceCardChange('url');
-        } else if (imageResult) {
-          // Image Analysis
-          cardRefs.image.current?.focus();
-          announceCardChange('image');
-        }
-        break;
-      case 3:
-        // Image Analysis (when URL analysis is present)
-        cardRefs.image.current?.focus();
-        announceCardChange('image');
-        break;
-    }
+    const total = getTotalResults();
+    if (total <= 1) return;
+    setActiveResultIndex((prevIndex) => (prevIndex + (direction === 'next' ? 1 : -1) + total) % total);
   };
 
   const announceCardChange = (type: 'comprehensive' | 'image' | 'text' | 'url') => {
@@ -336,40 +296,31 @@ export function MainContent() {
 
   // Add a function to handle feedback submission
   const handleFeedback = async (rating: number, comment?: string) => {
+    const currentAnalysisType = textResult?.type || imageResult?.type || (urlError ? 'url' : undefined);
+    const currentResultId = textResult?.id || imageResult?.id;
+
+    if (!currentAnalysisType || !currentResultId) {
+      toast.error(language === 'ml' ? 'ഫീഡ്\u200cബാക്ക് നൽകുന്നതിൽ പിശക്' : 'Error submitting feedback');
+      return;
+    }
+
+    setFeedbackLoading(true);
+    setFeedbackSubmitted(false);
     try {
-      // Get the relevant analysis result ID if available
-      const analysisResultId = textResult?.id || imageResult?.id || undefined;
-      
-      console.log('Submitting feedback with:', {
-        analysisResultId,
-        rating,
-        hasComment: !!comment,
-        hasUserId: !!user?.id
-      });
-      
-      // Submit the feedback using the feedback service
       await feedbackService.submitFeedback({
+        analysisType: currentAnalysisType,
+        resultId: currentResultId,
         rating,
-        comment: comment || undefined,
-        analysis_result_id: analysisResultId,
-        user_id: user?.id
+        comment,
+        userId: user?.id
       });
-      
-      toast.success(
-        language === 'ml' 
-          ? 'നിങ്ങളുടെ പ്രതികരണത്തിന് നന്ദി!' 
-          : 'Thank you for your feedback!'
-      );
-      
-      return Promise.resolve();
+      toast.success(language === 'ml' ? 'ഫീഡ്\u200cബാക്ക് ലഭിച്ചു!' : 'Feedback submitted!');
+      setFeedbackSubmitted(true);
     } catch (error) {
-      console.error('Error submitting feedback:', error);
-      toast.error(
-        language === 'ml' 
-          ? 'പ്രതികരണം സമർപ്പിക്കുന്നതിൽ പിശക്' 
-          : 'Error submitting feedback'
-      );
-      return Promise.reject(error);
+      console.error("Feedback submission failed:", error);
+      toast.error(language === 'ml' ? 'ഫീഡ്\u200cബാക്ക് നൽകുന്നതിൽ പിശക്' : 'Failed to submit feedback');
+    } finally {
+      setFeedbackLoading(false);
     }
   };
 
@@ -396,305 +347,219 @@ export function MainContent() {
   // Calculate total number of results
   const getTotalResults = () => {
     let count = 0;
-    if (textResult?.type === 'url' || (textResult && imageResult)) count++; // Comprehensive Analysis
-    if (textResult) count++; // Text Analysis
-    if (imageResult) count++; // Image Analysis
-    if (textResult?.type === 'url' && textResult?.urlAnalysis) count++; // URL Analysis
+    if (textResult) count++;
+    if (imageResult) count++;
+    // Add other potential result types here if needed
     return count;
   };
 
   // Add a retry handler for URL errors
   const handleRetryUrl = () => {
-    if (urlError) {
-      handleAnalyze({ type: 'url', content: urlError.url });
+    if (urlError?.url) {
+      const urlToRetry = urlError.url;
+      setUrlError(null);
+      handleAnalyze({ type: 'url', content: urlToRetry });
     }
   };
 
+  // Refresh history when user changes or component mounts
+  useEffect(() => {
+    setAnalysisHistoryKey(Date.now());
+  }, [user]);
+
+  // Updated handleSelectHistory with better type handling
+  const handleSelectHistory = (analysis: any) => {
+    setTextResult(null);
+    setImageResult(null);
+    setUrlError(null);
+    setFeedbackSubmitted(false);
+    setIsAnalyzing(false);
+    setCurrentContent('');
+    setCurrentImageContent(null);
+    setExtractedText('');
+
+    try {
+      const input = analysis.input || {}; // Default to empty object if input is missing
+      const result = analysis.result || {}; // Default to empty object if result is missing
+      const errorInfo = analysis.error || {}; // Default to empty object if error is missing
+
+      if (analysis.type === 'text' || analysis.type === 'url') {
+        if (isTextAnalysisResult(result)) {
+          setTextResult({ ...result, type: analysis.type, id: analysis.id });
+          setCurrentContent(input.text || input.url || '');
+        } else {
+           console.warn('History item result is not a valid TextAnalysisResult', result);
+           // Optionally set an error state or default view
+        }
+      } else if (analysis.type === 'image' || analysis.type === 'text_image') {
+        if (isImageAnalysisResult(result)) {
+          setImageResult({ ...result, type: 'image', id: analysis.id });
+          setCurrentImageContent(input.image_url || null);
+          setCurrentContent(input.text || '');
+
+          const embeddedTextAnalysis = result.details?.text_analysis;
+          if (embeddedTextAnalysis && isTextAnalysisResult(embeddedTextAnalysis)) {
+            // Use 'extractedText' property if available, fallback to empty string
+            const extracted = embeddedTextAnalysis.extractedText || ''; 
+            setTextResult({ ...embeddedTextAnalysis, type: 'text', id: analysis.id });
+            setExtractedText(extracted);
+          } 
+        } else {
+           console.warn('History item result is not a valid ImageAnalysisResult', result);
+        }
+      } else if (analysis.type === 'url_error') {
+        setUrlError({ 
+          message: errorInfo.message || 'Unknown error from history', 
+          url: input.url || '' 
+        });
+        setCurrentContent(input.url || '');
+      } else {
+         console.warn(`Unsupported history item type: ${analysis.type}`);
+      }
+      // Determine active index after processing
+      setActiveResultIndex(textResult && isTextAnalysisResult(textResult) ? 0 : (imageResult && isImageAnalysisResult(imageResult) ? 0 : 0));
+    } catch (error) {
+      console.error("Error loading from history:", error);
+      toast.error(language === 'ml' ? 'ചരിത്രത്തിൽ നിന്ന് ലോഡുചെയ്യുന്നതിൽ പിശക്' : 'Error loading from history');
+      setTextResult(null);
+      setImageResult(null);
+      setUrlError(null);
+    }
+  };
+
+  const feedbackAnalysisType = textResult?.type || imageResult?.type || (urlError ? 'url' : undefined);
+  const feedbackResultId = textResult?.id || imageResult?.id;
+
   return (
-    <div className="w-full max-w-4xl mx-auto overflow-hidden">
-      <motion.div
-        className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-purple-500/5 to-indigo-500/5 rounded-3xl blur-3xl -z-10"
-        animate={{
-          scale: [1, 1.1, 1],
-          rotate: [0, 2, 0],
-        }}
-        transition={{
-          duration: 5,
-          repeat: Infinity,
-          repeatType: 'reverse',
-        }}
+    <div className="space-y-8 px-2 sm:px-0">
+      <InputSection 
+        onAnalyze={handleAnalyze} 
+        isAnalyzing={isAnalyzing} 
       />
-      {user?.id && (
-        <AnalysisHistory 
-          onSelectAnalysis={(analysis) => {
-            // Handle selecting a past analysis
-            if (analysis.type === 'text' || analysis.type === 'url') {
-              setTextResult({
-                ...analysis.result,
-                type: analysis.type,
-                id: analysis.id
-              });
-              setCurrentContent(analysis.input.text || analysis.input.url || '');
-            } else if (analysis.type === 'image' || analysis.type === 'text_image') {
-              setImageResult({
-                ...analysis.result,
-                type: analysis.type,
-                id: analysis.id
-              });
-              if (analysis.input.text) {
-                setCurrentContent(analysis.input.text);
-                setTextResult({
-                  ...analysis.result,
-                  type: 'text',
-                  id: analysis.id
-                });
-              }
-              // Handle image URL with type checking
-              if (typeof analysis.input.image_url === 'string') {
-                setCurrentImageContent(analysis.input.image_url);
-              } else {
-                setCurrentImageContent(null);
-              }
-            }
-          }} 
-        />
-      )}
-      <InputSection onAnalyze={handleAnalyze} />
-      
+
       <AnimatePresence mode="wait">
-        {isAnalyzing ? (
-          <LoadingSpinner />
-        ) : (
-          <>
-            {/* URL Error State */}
-            {urlError && (
-              <motion.div 
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                className="min-h-[400px] mb-24"
-              >
-                <UrlErrorCard 
-                  errorMessage={urlError.message} 
-                  url={urlError.url}
-                  onRetry={handleRetryUrl}
-                />
-              </motion.div>
-            )}
-            
-            {/* TEXT-ONLY RESULT */}
-            {!urlError && textResult && !imageResult && !(textResult.type === 'url' && textResult.urlAnalysis) && (
-              <div className="min-h-[400px] mb-24">
-                <ResultCard 
-                  result={textResult} 
-                  content={currentContent}
-                  extractedFromImage={false}
-                />
-                {/* Feedback Section - Add onFeedback prop */}
-                <div className="mt-12">
-                  <FeedbackSection onFeedback={handleFeedback} />
-                </div>
-              </div>
-            )}
-            
-            {/* IMAGE-ONLY RESULT */}
-            {!urlError && imageResult && !textResult && (
-              <div className="min-h-[400px] mb-24">
-                <ImageResultCard 
-                  result={imageResult} 
-                  imageUrl={currentImageContent} 
-                  extractedText={extractedText}
-                />
-                {/* Feedback Section - Add onFeedback prop */}
-                <div className="mt-12">
-                  <FeedbackSection onFeedback={handleFeedback} />
-                </div>
-              </div>
-            )}
-            
-            {/* COMBINED RESULTS WITH SWIPE UI */}
-            {!urlError && hasMultipleResults && (
-              <div className="min-h-[600px] mb-24" tabIndex={0} 
-                   aria-label={language === 'ml' ? 'വിശകലന ഫലങ്ങൾ' : 'Analysis Results'} 
-                   role="region"
-                   aria-live="polite"
-                   aria-roledescription={
-                     language === 'ml' 
-                       ? 'ഇടത്തേക്കും വലത്തേക്കും അമ്പ് കീകൾ ഉപയോഗിച്ച് ഫലങ്ങൾ മാറ്റുക' 
-                       : 'Use left and right arrow keys to switch between results'
-                   }>
-                {/* Navigation Dots */}
-                <div className="flex justify-center space-x-2 mt-4">
-                  {/* Comprehensive Analysis Dot */}
-                  {textResult && imageResult && (
-                    <button
-                      onClick={() => setActiveResultIndex(0)}
-                      aria-label="Show comprehensive analysis"
-                      className={clsx(
-                        "w-2 h-2 rounded-full transition-all duration-200",
-                        activeResultIndex === 0
-                          ? "bg-blue-500 scale-125"
-                          : "bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500"
-                      )}
-                    />
+        {isAnalyzing && (
+          <motion.div
+            key="loading"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="flex justify-center items-center py-12"
+          >
+            <LoadingSpinner />
+          </motion.div>
+        )}
+
+        {!isAnalyzing && urlError && (
+          <motion.div
+            key="url-error"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+          >
+            <UrlErrorCard 
+              url={urlError.url} 
+              errorMessage={urlError.message} 
+              onRetry={handleRetryUrl} 
+            />
+          </motion.div>
+        )}
+
+        {!isAnalyzing && !urlError && (textResult || imageResult) && (
+          <motion.div
+            key="results"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="relative"
+          >
+            <div className="flex flex-col space-y-6">
+              <div className="relative overflow-hidden min-h-[400px]">
+                <AnimatePresence initial={false} custom={activeResultIndex} mode="popLayout">
+                  {/* Pass only expected props */} 
+                  {textResult && activeResultIndex === 0 && (
+                    <motion.div key="comprehensive" variants={cardVariants} initial="enter" animate="center" exit="exit" custom={0} layout>
+                      <ComprehensiveAnalysisCard textAnalysis={textResult} />
+                    </motion.div>
                   )}
                   
-                  {/* Text Analysis Dot */}
-                  {textResult && (
-                    <button
-                      onClick={() => setActiveResultIndex(1)}
-                      aria-label="Show text analysis"
-                      className={clsx(
-                        "w-2 h-2 rounded-full transition-all duration-200",
-                        activeResultIndex === 1
-                          ? "bg-blue-500 scale-125"
-                          : "bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500"
-                      )}
-                    />
+                  {/* Pass only expected props */} 
+                  {imageResult && activeResultIndex === (textResult ? 1 : 0) && (
+                    <motion.div key="image" variants={cardVariants} initial="enter" animate="center" exit="exit" custom={1} layout>
+                       <ImageResultCard result={imageResult} imageUrl={currentImageContent} />
+                    </motion.div>
                   )}
-
-                  {/* Image Analysis Dot */}
-                  {imageResult && (
-                    <button
-                      onClick={() => setActiveResultIndex(2)}
-                      aria-label="Show image analysis"
-                      className={clsx(
-                        "w-2 h-2 rounded-full transition-all duration-200",
-                        activeResultIndex === 2
-                          ? "bg-blue-500 scale-125"
-                          : "bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500"
-                      )}
-                    />
-                  )}
-
-                  {/* URL Analysis Dot */}
-                  {textResult?.type === 'url' && textResult?.urlAnalysis && (
-                    <button
-                      onClick={() => setActiveResultIndex(3)}
-                      aria-label="Show URL analysis"
-                      className={clsx(
-                        "w-2 h-2 rounded-full transition-all duration-200",
-                        activeResultIndex === 3
-                          ? "bg-blue-500 scale-125"
-                          : "bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500"
-                      )}
-                    />
-                  )}
-                </div>
-
-                {/* Results Cards */}
-                <div className="relative mt-6">
-                  <div className="flex-grow w-full" style={{ height: '1px' }}></div>
-                  
-                  {/* Comprehensive Analysis Card */}
-                  {(textResult?.type === 'url' || (textResult && imageResult)) && (
-                    <div 
-                      className={clsx(
-                        "transition-all duration-500 w-full max-w-4xl mx-auto",
-                        activeResultIndex === 0 ? "opacity-100 block" : "opacity-0 hidden"
-                      )}
-                      tabIndex={activeResultIndex === 0 ? 0 : -1}
-                      onKeyDown={(e) => {
-                        if (e.key === 'ArrowRight') {
-                          e.preventDefault();
-                          navigateResults('next');
-                        } else if (e.key === 'ArrowLeft') {
-                          e.preventDefault();
-                          navigateResults('prev');
-                        }
-                      }}
-                    >
-                      <ComprehensiveAnalysisCard
-                        textAnalysis={textResult}
-                        imageAnalysis={imageResult}
-                        urlAnalysis={textResult?.urlAnalysis}
-                        extractedTextFromImage={extractedText}
-                      />
-                    </div>
-                  )}
-
-                  {/* Text Analysis Card */}
-                  {textResult && (
-                    <div 
-                      className={clsx(
-                        "transition-all duration-500 w-full max-w-4xl mx-auto",
-                        activeResultIndex === 1 ? "opacity-100 block" : "opacity-0 hidden"
-                      )}
-                      tabIndex={activeResultIndex === 1 ? 0 : -1}
-                    onKeyDown={(e) => {
-                      if (e.key === 'ArrowRight') {
-                        e.preventDefault();
-                        navigateResults('next');
-                        } else if (e.key === 'ArrowLeft') {
-                          e.preventDefault();
-                          navigateResults('prev');
-                      }
-                    }}
-                  >
-                    <ResultCard 
-                      result={textResult} 
-                      content={currentContent}
-                        extractedFromImage={false}
-                    />
-                  </div>
-                  )}
-
-                  {/* Image Analysis Card */}
-                  {imageResult && (
-                    <div 
-                      className={clsx(
-                        "transition-all duration-500 w-full max-w-4xl mx-auto",
-                        activeResultIndex === 2 ? "opacity-100 block" : "opacity-0 hidden"
-                      )}
-                      tabIndex={activeResultIndex === 2 ? 0 : -1}
-                    onKeyDown={(e) => {
-                        if (e.key === 'ArrowRight') {
-                          e.preventDefault();
-                          navigateResults('next');
-                        } else if (e.key === 'ArrowLeft') {
-                        e.preventDefault();
-                        navigateResults('prev');
-                      }
-                    }}
-                  >
-                    <ImageResultCard 
-                      result={imageResult} 
-                      imageUrl={currentImageContent} 
-                      extractedText={extractedText}
-                    />
-                  </div>
-                  )}
-
-                  {/* URL Analysis Card */}
-                  {textResult?.type === 'url' && textResult?.urlAnalysis && (
-                    <div 
-                      className={clsx(
-                        "transition-all duration-500 w-full max-w-4xl mx-auto",
-                        activeResultIndex === 3 ? "opacity-100 block" : "opacity-0 hidden"
-                      )}
-                      tabIndex={activeResultIndex === 3 ? 0 : -1}
-                      onKeyDown={(e) => {
-                        if (e.key === 'ArrowRight') {
-                          e.preventDefault();
-                          navigateResults('next');
-                        } else if (e.key === 'ArrowLeft') {
-                          e.preventDefault();
-                          navigateResults('prev');
-                        }
-                      }}
-                    >
-                      <UrlAnalysisCard 
-                        urlAnalysis={textResult.urlAnalysis}
-                        onNavigate={navigateResults}
-                      />
-                    </div>
-                  )}
-                </div>
+                </AnimatePresence>
               </div>
-            )}
-          </>
+
+              {/* Navigation Controls */} 
+              {getTotalResults() > 1 && (
+                <div className="flex justify-center items-center space-x-4 mt-4">
+                  <button
+                    onClick={() => navigateResults('prev')}
+                    className="p-2 rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition disabled:opacity-50 disabled:cursor-not-allowed" 
+                    aria-label="Previous result"
+                    disabled={isAnalyzing}
+                  >
+                    <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" /> 
+                  </button>
+                  <span className="text-sm text-gray-600 dark:text-gray-400">
+                    {activeResultIndex + 1} / {getTotalResults()}
+                  </span>
+                  <button
+                    onClick={() => navigateResults('next')}
+                    className="p-2 rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    aria-label="Next result"
+                    disabled={isAnalyzing}
+                  >
+                    <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" /> 
+                  </button>
+                </div>
+              )}
+            </div>
+          </motion.div>
         )}
       </AnimatePresence>
+      
+      {/* Pass only expected props */} 
+      {!isAnalyzing && feedbackAnalysisType && feedbackResultId && (
+        <FeedbackSection 
+          analysisType={feedbackAnalysisType} 
+          resultId={feedbackResultId} 
+          onFeedback={handleFeedback}
+          feedbackLoading={feedbackLoading}
+          feedbackSubmitted={feedbackSubmitted}
+        />
+      )}
+      
+      {/* Pass only expected props */} 
+      {user && (
+        <AnalysisHistory key={analysisHistoryKey} userId={user.id} onSelectAnalysis={handleSelectHistory} />
+      )}
     </div>
   );
 }
+
+// Animation variants for cards
+const cardVariants = {
+  enter: (direction: number) => ({
+    x: direction > 0 ? 300 : -300,
+    opacity: 0,
+    scale: 0.95,
+    width: '100%'
+  }),
+  center: {
+    zIndex: 1,
+    x: 0,
+    opacity: 1,
+    scale: 1,
+    transition: { duration: 0.4, ease: 'easeOut' }
+  },
+  exit: (direction: number) => ({
+    zIndex: 0,
+    x: direction < 0 ? 300 : -300,
+    opacity: 0,
+    scale: 0.95,
+    width: '100%',
+    transition: { duration: 0.3, ease: 'easeIn' }
+  })
+};

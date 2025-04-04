@@ -5,12 +5,14 @@ publish = "dist"
 [site]
 bucket = "dist"
 
+# Pages configuration
+[pages]
+build_output_dir = "dist"
+custom_domains = ["yeahya.pages.dev"]
+
 # The production environment configuration
 [env.production]
 name = "yeahya"
-routes = [
-  { pattern = "yeahya.pages.dev", zone_name = "pages.dev" }
-]
 
 # Environment variables will be managed through Cloudflare Pages dashboard
 [env.production.vars]

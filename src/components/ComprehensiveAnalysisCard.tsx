@@ -181,10 +181,10 @@ export const ComprehensiveAnalysisCard: FC<ComprehensiveAnalysisCardProps> = ({
                 animate={{ scale: 1 }}
                 className="flex items-center text-green-500 dark:text-green-400"
               >
-                <ShieldCheck className="w-8 h-8 mr-2" />
+                <ShieldCheck className="w-6 h-6 sm:w-8 sm:h-8 mr-2" />
                 <span className={clsx(
-                  "text-xl font-semibold",
-                  isMalayalam && "text-2xl leading-relaxed"
+                  "text-lg sm:text-xl font-semibold",
+                  isMalayalam && "text-xl sm:text-2xl leading-relaxed"
                 )}>{t.reliable}</span>
               </motion.div>
             ) : (
@@ -193,10 +193,10 @@ export const ComprehensiveAnalysisCard: FC<ComprehensiveAnalysisCardProps> = ({
                 animate={{ scale: 1 }}
                 className="flex items-center text-red-500 dark:text-red-400"
               >
-                <ShieldAlert className="w-8 h-8 mr-2" />
+                <ShieldAlert className="w-6 h-6 sm:w-8 sm:h-8 mr-2" />
                 <span className={clsx(
-                  "text-xl font-semibold",
-                  isMalayalam && "text-2xl leading-relaxed"
+                  "text-lg sm:text-xl font-semibold",
+                  isMalayalam && "text-xl sm:text-2xl leading-relaxed"
                 )}>{t.suspicious}</span>
               </motion.div>
             )}
@@ -204,17 +204,17 @@ export const ComprehensiveAnalysisCard: FC<ComprehensiveAnalysisCardProps> = ({
 
           {/* Extracted Text Display */}
           {hasExtractedText && (
-            <div className="mb-4 bg-blue-50 dark:bg-blue-900/20 p-3 rounded-md">
+            <div className="mb-4 bg-blue-50 dark:bg-blue-900/20 p-2 sm:p-3 rounded-md">
               <p className={clsx(
-                "text-blue-700 dark:text-blue-300 flex items-center",
-                isMalayalam && "text-base"
+                "text-blue-700 dark:text-blue-300 flex items-center text-sm sm:text-base",
+                isMalayalam && "text-base sm:text-lg"
               )}>
-                <FileText className="w-4 h-4 mr-2" />
+                <FileText className="w-4 h-4 mr-2 flex-shrink-0" />
                 {language === 'ml' ? 'ചിത്രത്തിൽ നിന്ന് തിരിച്ചറിഞ്ഞ വാചകം' : 'Text extracted from image'}
               </p>
               <p className={clsx(
-                "mt-2 text-gray-700 dark:text-gray-300 border-l-2 border-blue-300 pl-3",
-                isMalayalam && "text-base leading-relaxed"
+                "mt-1 sm:mt-2 text-gray-700 dark:text-gray-300 border-l-2 border-blue-300 pl-2 sm:pl-3 text-sm sm:text-base",
+                isMalayalam && "text-base sm:text-lg leading-normal sm:leading-relaxed"
               )}>
                 {extractedTextFromImage}
               </p>
@@ -224,34 +224,34 @@ export const ComprehensiveAnalysisCard: FC<ComprehensiveAnalysisCardProps> = ({
           {/* Explanation */}
           <div className="mb-6">
             <h3 className={clsx(
-              "text-lg font-semibold mb-4 text-gray-800 dark:text-gray-100 flex items-center",
-              isMalayalam && "text-xl leading-relaxed"
+              "text-md sm:text-lg font-semibold mb-2 sm:mb-4 text-gray-800 dark:text-gray-100 flex items-center",
+              isMalayalam && "text-lg sm:text-xl leading-relaxed"
             )}>
               {overallResult === 0 ? (
-                <CheckCircle className="w-5 h-5 mr-2 text-green-500 dark:text-green-400" />
+                <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 mr-2 text-green-500 dark:text-green-400 flex-shrink-0" />
               ) : (
-                <AlertCircle className="w-5 h-5 mr-2 text-red-500 dark:text-red-400" />
+                <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 mr-2 text-red-500 dark:text-red-400 flex-shrink-0" />
               )}
               {language === 'ml' ? 'സമഗ്ര വിശകലന സംഗ്രഹം' : 'Comprehensive Analysis Summary'}
             </h3>
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               {textAnalysis && (
-                <div className="flex items-start space-x-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-                  <div className="flex-shrink-0 w-2 h-2 mt-2 rounded-full bg-blue-500" />
+                <div className="flex items-start space-x-2 sm:space-x-3 p-2 sm:p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                  <div className="flex-shrink-0 w-2 h-2 mt-1 sm:mt-2 rounded-full bg-blue-500" />
                   <p className={clsx(
-                    "text-gray-600 dark:text-gray-300",
-                    isMalayalam && "text-lg leading-loose"
+                    "text-sm sm:text-base text-gray-600 dark:text-gray-300",
+                    isMalayalam && "text-base sm:text-lg leading-snug sm:leading-loose"
                   )}>
                     {isMalayalam ? textAnalysis.EXPLANATION_ML : textAnalysis.EXPLANATION_EN}
                   </p>
                 </div>
               )}
               {imageAnalysis && (
-                <div className="flex items-start space-x-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-                  <div className="flex-shrink-0 w-2 h-2 mt-2 rounded-full bg-purple-500" />
+                <div className="flex items-start space-x-2 sm:space-x-3 p-2 sm:p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                  <div className="flex-shrink-0 w-2 h-2 mt-1 sm:mt-2 rounded-full bg-purple-500" />
                   <p className={clsx(
-                    "text-gray-600 dark:text-gray-300",
-                    isMalayalam && "text-lg leading-loose"
+                    "text-sm sm:text-base text-gray-600 dark:text-gray-300",
+                    isMalayalam && "text-base sm:text-lg leading-snug sm:leading-loose"
                   )}>
                     {isMalayalam
                       ? `ചിത്രം ${imageAnalysis.verdict.toLowerCase().includes('fake') ? 'വ്യാജമാണ്' : 'യഥാർത്ഥമാണ്'}. ${
@@ -264,11 +264,11 @@ export const ComprehensiveAnalysisCard: FC<ComprehensiveAnalysisCardProps> = ({
                 </div>
               )}
               {urlAnalysis && (
-                <div className="flex items-start space-x-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-                  <div className="flex-shrink-0 w-2 h-2 mt-2 rounded-full bg-green-500" />
+                <div className="flex items-start space-x-2 sm:space-x-3 p-2 sm:p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                  <div className="flex-shrink-0 w-2 h-2 mt-1 sm:mt-2 rounded-full bg-green-500" />
                   <p className={clsx(
-                    "text-gray-600 dark:text-gray-300",
-                    isMalayalam && "text-lg leading-loose"
+                    "text-sm sm:text-base text-gray-600 dark:text-gray-300",
+                    isMalayalam && "text-base sm:text-lg leading-snug sm:leading-loose"
                   )}>
                     {isMalayalam
                       ? `URL ${urlAnalysis.is_trustworthy ? 'വിശ്വസനീയമാണ്' : 'വിശ്വസനീയമല്ല'}. ${
