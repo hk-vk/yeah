@@ -1,27 +1,39 @@
-import React from 'react';
-import { motion, useScroll, useTransform } from 'framer-motion';
+import React, { useRef, useEffect, useState, memo } from 'react';
+import { motion, useInView, useSpring } from 'framer-motion';
 import { useLanguage } from '../contexts/LanguageContext';
 
-export function Stats() {
+// Optimized Counter component using useSpring and useInView
+const Counter = memo(({ value, duration = 1.5 }) => {
+  const ref = useRef<HTMLSpanElement>(null);
+  const isInView = useInView(ref, { once: true, amount: 0.5 });
+  const valueNum = parseInt(value.replace(/[^0-9]/g, ''));
+  const springValue = useSpring(0, { 
+    stiffness: 100,
+    damping: 30,
+    restDelta: 0.01
+  });
+
+  useEffect(() => {
+    if (isInView) {
+      springValue.set(valueNum);
+    }
+  }, [isInView, springValue, valueNum]);
+
+  const [displayValue, setDisplayValue] = useState('0');
+
+  useEffect(() => {
+    return springValue.onChange((latest) => {
+      setDisplayValue(String(Math.round(latest)));
+    });
+  }, [springValue]);
+
+  return <span ref={ref}>{value.replace(/[0-9]+/, displayValue)}</span>;
+});
+
+export const Stats = memo(function Stats() {
   const { language } = useLanguage();
-  const { scrollYProgress } = useScroll();
-
-  // Create counter animation effect
-  const Counter = ({ value, duration = 2 }) => {
-    const [count, setCount] = React.useState(0);
-    const valueNum = parseInt(value.replace(/[^0-9]/g, ''));
-    
-    React.useEffect(() => {
-      const interval = setInterval(() => {
-        if (count < valueNum) {
-          setCount(prev => Math.min(prev + Math.ceil(valueNum / (duration * 20)), valueNum));
-        }
-      }, 50);
-      return () => clearInterval(interval);
-    }, [count, valueNum]);
-
-    return value.replace(/[0-9]+/, count);
-  };
+  const ref = useRef<HTMLElement>(null);
+  const isInView = useInView(ref, { once: true, amount: 0.3 });
 
   const stats = [
     {
@@ -47,66 +59,64 @@ export function Stats() {
     }
   ];
 
-  // Scale animation based on scroll
-  const scale = useTransform(scrollYProgress, [0.3, 0.4], [0.9, 1]);
-  const opacity = useTransform(scrollYProgress, [0.3, 0.4], [0.3, 1]);
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.15,
+        delayChildren: 0.2
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { 
+      opacity: 1, 
+      y: 0,
+      transition: { duration: 0.5, ease: "easeOut" }
+    }
+  };
 
   return (
     <motion.section 
-      className="py-12 px-4 sm:px-6 relative"
-      style={{ scale, opacity }}
-      initial={{ opacity: 0 }}
-      whileInView={{ opacity: 1 }}
-      viewport={{ once: true }}
+      ref={ref}
+      className="py-12 sm:py-16 px-4"
+      variants={containerVariants}
+      initial="hidden"
+      animate={isInView ? "visible" : "hidden"}
     >
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+      <motion.div 
+        className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 max-w-5xl mx-auto"
+      >
         {stats.map((stat, index) => (
           <motion.div
             key={index}
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6, delay: index * 0.2 }}
+            variants={itemVariants}
             whileHover={{ 
-              scale: 1.05,
-              boxShadow: "0 4px 15px rgba(0, 0, 0, 0.1)",
-              transition: { duration: 0.2 }
+              y: -5, 
+              boxShadow: "0 8px 20px rgba(0, 0, 0, 0.1)",
+              transition: { type: "spring", stiffness: 300, damping: 15 }
             }}
-            className="text-center p-4 sm:p-6 bg-white/50 dark:bg-gray-800/50 rounded-xl backdrop-blur-sm 
-                       relative overflow-hidden group transition-all duration-300"
+            className="text-center p-4 sm:p-6 bg-white/70 dark:bg-gray-800/70 rounded-xl backdrop-blur-md shadow-lg 
+                       group transition-all duration-300 transform-gpu will-change-transform"
+            style={{ willChange: 'transform, box-shadow' }}
           >
-            <motion.div
-              className="text-3xl sm:text-4xl font-bold text-blue-600 dark:text-blue-400 mb-2"
-              initial={{ scale: 0.5, opacity: 0 }}
-              whileInView={{ scale: 1, opacity: 1 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: index * 0.2 }}
-            >
+            <div className="text-3xl sm:text-5xl font-bold text-blue-600 dark:text-blue-400 mb-2 sm:mb-3">
               <Counter value={stat.value} />
-            </motion.div>
+            </div>
 
-            <motion.div
-              className="text-md sm:text-lg font-semibold text-gray-900 dark:text-white mb-1"
-              initial={{ y: 20, opacity: 0 }}
-              whileInView={{ y: 0, opacity: 1 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: 0.2 + index * 0.2 }}
-            >
+            <div className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-1 sm:mb-2">
               {stat.label}
-            </motion.div>
+            </div>
 
-            <motion.div
-              className="text-xs sm:text-sm text-gray-600 dark:text-gray-300"
-              initial={{ y: 20, opacity: 0 }}
-              whileInView={{ y: 0, opacity: 1 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: 0.4 + index * 0.2 }}
-            >
+            <div className="text-sm text-gray-600 dark:text-gray-300">
               {stat.description}
-            </motion.div>
+            </div>
           </motion.div>
         ))}
-      </div>
+      </motion.div>
     </motion.section>
   );
-}
+});
