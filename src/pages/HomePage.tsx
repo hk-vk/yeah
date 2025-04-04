@@ -44,7 +44,7 @@ export default function HomePage() {
           transition={{ duration: 0.6 }}
         >
           <motion.h1 
-            className="text-4xl sm:text-5xl font-bold text-gray-900 dark:text-white mb-6 bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600"
+            className="text-3xl sm:text-5xl font-bold text-gray-900 dark:text-white mb-6 bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600"
             initial={{ scale: 0.9 }}
             animate={{ scale: 1 }}
             transition={{ duration: 0.6 }}
@@ -112,7 +112,7 @@ export default function HomePage() {
         animate={{ opacity: 1 }}
         transition={{ duration: 0.6 }}
       >
-        <div className="grid md:grid-cols-3 gap-8">
+        <div className="grid md:grid-cols-3 gap-8 px-4 sm:px-0">
           {features.map((feature, index) => (
             <motion.div
               key={index}
@@ -120,12 +120,10 @@ export default function HomePage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: index * 0.2 }}
               whileHover={{ 
-                scale: 1.05,
-                boxShadow: "0 4px 15px rgba(0, 0, 0, 0.1)",
+                scale: 1.02,
                 transition: { duration: 0.2 }
               }}
-              className="text-center p-6 bg-white/50 dark:bg-gray-800/50 rounded-xl backdrop-blur-sm 
-                         relative overflow-hidden group transition-all duration-300"
+              className="p-6 sm:p-8 bg-white/50 dark:bg-gray-800/50 rounded-xl backdrop-blur-sm mx-4 sm:mx-0"
             >
               <motion.div 
                 initial={{ scale: 0.5, opacity: 0 }}
@@ -138,17 +136,17 @@ export default function HomePage() {
                 </div>
               </motion.div>
 
-              <motion.h3 
-                className="text-xl font-semibold text-gray-900 dark:text-white mb-2"
+              <motion.h2 
+                className="text-2xl sm:text-3xl font-bold mb-4 text-gray-900 dark:text-white"
                 initial={{ y: 20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ duration: 0.5, delay: 0.2 + index * 0.2 }}
               >
                 {feature.title}
-              </motion.h3>
+              </motion.h2>
 
               <motion.p 
-                className="text-sm text-gray-600 dark:text-gray-300"
+                className="text-md sm:text-lg mb-6 text-gray-600 dark:text-gray-300"
                 initial={{ y: 20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ duration: 0.5, delay: 0.4 + index * 0.2 }}
@@ -185,7 +183,7 @@ export default function HomePage() {
             {t.ctaTitle}
           </motion.h2>
           <motion.p 
-            className="text-lg mb-6 text-gray-600 dark:text-gray-300"
+            className="text-md sm:text-lg mb-6 text-gray-600 dark:text-gray-300"
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ duration: 0.5, delay: 0.2 }}

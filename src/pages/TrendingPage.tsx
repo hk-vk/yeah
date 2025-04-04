@@ -60,27 +60,27 @@ export const TrendingPage: React.FC = () => {
       className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-indigo-50 
         dark:from-gray-900 dark:via-gray-900 dark:to-gray-900"
     >
-      <div className="max-w-4xl mx-auto px-4 py-12">
+      <div className="max-w-4xl mx-auto px-4 py-8 sm:py-12">
         {/* Page Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-12"
+          className="text-center mb-8 sm:mb-12"
         >
           <div className="inline-flex items-center justify-center p-2 bg-blue-100 dark:bg-blue-900/30 
-            rounded-full mb-4">
-            <TrendingUp className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+            rounded-full mb-3 sm:mb-4">
+            <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 dark:text-blue-400" />
           </div>
           <h1 className={clsx(
-            "text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent",
+            "text-3xl sm:text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent",
             "dark:from-blue-400 dark:to-purple-400",
-            isMalayalam && "text-5xl leading-relaxed"
+            isMalayalam && "text-4xl sm:text-5xl leading-relaxed"
           )}>
             {translations[language].trendingTitle}
           </h1>
           <p className={clsx(
-            "mt-4 text-gray-600 dark:text-gray-400 max-w-2xl mx-auto",
-            isMalayalam ? "text-lg leading-relaxed" : "text-base"
+            "mt-3 sm:mt-4 text-gray-600 dark:text-gray-400 max-w-2xl mx-auto",
+            isMalayalam ? "text-md sm:text-lg leading-relaxed" : "text-sm sm:text-base"
           )}>
             {translations[language].trendingDescription}
           </p>
@@ -91,7 +91,7 @@ export const TrendingPage: React.FC = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="mb-8"
+          className="mb-6 sm:mb-8"
         >
           <GlassCard className="p-2">
             <div className="relative">
@@ -103,7 +103,7 @@ export const TrendingPage: React.FC = () => {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={translations[language].searchInTrending}
                 className={clsx(
-                  "w-full pl-10 pr-4 py-2 rounded-lg",
+                  "w-full pl-10 pr-4 py-2 rounded-lg text-sm sm:text-base",
                   "bg-transparent border border-gray-200 dark:border-gray-700",
                   "focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent",
                   "placeholder-gray-400 dark:placeholder-gray-600",
