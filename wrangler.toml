@@ -1,0 +1,14 @@
+[build]
+command = "pnpm build"
+publish = "dist"
+
+[site]
+bucket = "dist"
+
+[env.production]
+name = "yeahya"
+routes = ["yeahya.pages.dev/*"]
+
+[env.production.vars]
+VITE_API_URL = "https://localhost:8000/api"
+VITE_SUPABASE_URL = "https://cxjdkqkzmtyudkwwhelq.supabase.co" 
