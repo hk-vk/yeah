@@ -18,6 +18,24 @@
     font-family: 'Poppins', system-ui, sans-serif;
   }
 
+  html, body {
+    height: 100%;
+    overflow-x: hidden; /* Ensure no horizontal overflow */
+  }
+
+  body {
+    position: relative; /* Helps with fixed positioning context */
+    overflow-y: auto; /* Ensure body can scroll if content exceeds viewport */
+    @apply bg-gray-900 text-white; /* Keep existing base styles */
+  }
+  
+  /* Ensure the root div also doesn't cause issues */
+  #root {
+    min-height: 100%; 
+    display: flex;
+    flex-direction: column;
+  }
+
   [lang="ml"] {
     font-family: 'Manjari', sans-serif;
   }
@@ -48,11 +66,6 @@
 
   ::-webkit-scrollbar-thumb:hover {
     @apply bg-blue-500 dark:bg-blue-700;
-  }
-
-  /* Default dark theme */
-  body {
-    @apply bg-gray-900 text-white;
   }
 }
 
