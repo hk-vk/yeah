@@ -1,22 +1,13 @@
-import React, { Suspense, lazy } from 'react';
+import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { LanguageProvider } from './contexts/LanguageContext';
 import { AuthProvider } from './contexts/AuthContext';
 import Layout from './components/Layout';
-
-// Lazy load page components
-const HomePage = lazy(() => import('./pages/HomePage'));
-const AnalyzePage = lazy(() => import('./pages/AnalyzePage'));
-const AdminPage = lazy(() => import('./pages/AdminPage'));
-const TrendingPage = lazy(() => import('./pages/TrendingPage').then(module => ({ default: module.TrendingPage })));
-
-// Basic loading fallback component
-const LoadingFallback = () => (
-  <div className="flex justify-center items-center h-screen">
-    <div className="text-xl">Loading...</div>
-  </div>
-);
+import HomePage from './pages/HomePage';
+import AnalyzePage from './pages/AnalyzePage';
+import AdminPage from './pages/AdminPage';
+import { TrendingPage } from './pages/TrendingPage';
 
 export default function App() {
   return (
@@ -30,14 +21,12 @@ export default function App() {
           <LanguageProvider>
             <AuthProvider>
               <Layout>
-                <Suspense fallback={<LoadingFallback />}>
-                  <Routes>
-                    <Route path="/" element={<HomePage />} />
-                    <Route path="/analyze" element={<AnalyzePage />} />
-                    <Route path="/admin" element={<AdminPage />} />
-                    <Route path="/trending" element={<TrendingPage />} />
-                  </Routes>
-                </Suspense>
+                <Routes>
+                  <Route path="/" element={<HomePage />} />
+                  <Route path="/analyze" element={<AnalyzePage />} />
+                  <Route path="/admin" element={<AdminPage />} />
+                  <Route path="/trending" element={<TrendingPage />} />
+                </Routes>
               </Layout>
             </AuthProvider>
           </LanguageProvider>

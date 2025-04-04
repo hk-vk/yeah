@@ -15,3 +15,5 @@ yarn-debug.log*
 .idea/
 .vercel
 wrangler.toml
+dist/
+

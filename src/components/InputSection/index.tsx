@@ -259,14 +259,18 @@ export function InputSection({ onAnalyze, isAnalyzing = false }: Props) {
                 "dark:bg-indigo-900/30 dark:text-indigo-300 dark:border-indigo-800/30",
                 "hover:bg-indigo-100 dark:hover:bg-indigo-800/40",
                 "disabled:opacity-50 disabled:cursor-not-allowed",
-                isMalayalam && "text-base"
+                isMalayalam && "text-base",
+                "sm:px-4 sm:py-2",
+                "px-2 py-2"
               )}
             >
               <Image className="w-5 h-5" />
-              {selectedImage
-                ? (language === 'ml' ? 'ചിത്രം മാറ്റുക' : 'Change Image')
-                : (language === 'ml' ? 'ചിത്രം ചേർക്കുക' : 'Add Image')
-              }
+              <span className="hidden sm:inline">
+                {selectedImage
+                  ? (language === 'ml' ? 'ചിത്രം മാറ്റുക' : 'Change Image')
+                  : (language === 'ml' ? 'ചിത്രം ചേർക്കുക' : 'Add Image')
+                }
+              </span>
               <input
                 type="file"
                 ref={fileInputRef}
