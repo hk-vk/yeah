@@ -82,14 +82,6 @@ export function Header() {
             </div>
 
             <div className="md:hidden flex items-center">
-              {!user && (
-                 <Link 
-                    to="/login"
-                    className="text-sm px-3 py-1 rounded border border-transparent hover:border-gray-300 dark:hover:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors mr-2"
-                  >
-                    {t.login} 
-                  </Link>
-              )}
               <button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                 className="p-1 rounded text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"
