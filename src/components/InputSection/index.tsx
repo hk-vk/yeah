@@ -254,15 +254,17 @@ export function InputSection({ onAnalyze, isAnalyzing = false }: Props) {
               whileHover={{ scale: isAnalyzing ? 1 : 1.02 }}
               whileTap={{ scale: isAnalyzing ? 1 : 0.98 }}
               className={clsx(
-                "flex items-center gap-1.5 px-4 py-2 rounded-lg transition-colors shadow-sm",
+                "flex items-center gap-1.5 transition-colors shadow-sm transform-gpu",
                 "bg-indigo-50 text-indigo-700 border border-indigo-200",
                 "dark:bg-indigo-900/30 dark:text-indigo-300 dark:border-indigo-800/30",
                 "hover:bg-indigo-100 dark:hover:bg-indigo-800/40",
                 "disabled:opacity-50 disabled:cursor-not-allowed",
                 isMalayalam && "text-base",
                 "sm:px-4 sm:py-2",
-                "px-2 py-2"
+                "px-2 py-2",
+                "rounded-lg will-change-transform"
               )}
+              style={{ willChange: 'transform' }}
             >
               <Image className="w-5 h-5" />
               <span className="hidden sm:inline">
@@ -286,7 +288,7 @@ export function InputSection({ onAnalyze, isAnalyzing = false }: Props) {
               type="submit"
               disabled={isAnalyzing}
               className={clsx(
-                "flex items-center gap-2 px-6 py-2 rounded-lg font-medium transition-all shadow-md relative overflow-hidden",
+                "flex items-center gap-2 font-medium transition-all shadow-md relative overflow-hidden transform-gpu",
                 "group",
                 isUrl ? (
                   "bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600"
@@ -296,14 +298,16 @@ export function InputSection({ onAnalyze, isAnalyzing = false }: Props) {
                 "text-white border border-transparent",
                 "dark:border-blue-700/50",
                 "disabled:opacity-50 disabled:cursor-not-allowed",
-                isMalayalam && "text-base"
+                isMalayalam && "text-base",
+                "px-6 py-2 rounded-lg will-change-transform"
               )}
               whileHover={{ scale: isAnalyzing ? 1 : 1.02 }}
               whileTap={{ scale: isAnalyzing ? 1 : 0.98 }}
+              style={{ willChange: 'transform' }}
             >
-              {/* Moving border effect */}
-              <span className="absolute inset-0 w-full h-full">
-                <span className="absolute inset-[-2px] rounded-lg bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
+              {/* Moving border effect - Optimized for performance */}
+              <span className="absolute inset-0 w-full h-full will-change-transform">
+                <span className="absolute inset-[-2px] rounded-lg bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 opacity-0 group-hover:opacity-100 transition-opacity"></span>
                 <span className="absolute inset-[-1px] rounded-lg bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 animate-rotate-gradient opacity-0 group-hover:opacity-100"></span>
                 <span className="absolute inset-[1px] rounded-lg bg-blue-600 group-hover:bg-blue-700"></span>
               </span>
@@ -312,7 +316,7 @@ export function InputSection({ onAnalyze, isAnalyzing = false }: Props) {
               <span className="relative z-10 flex items-center gap-2">
                 {isAnalyzing ? (
                   <>
-                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin will-change-transform"></div>
                     <span>{language === 'ml' ? 'വിശകലനം ചെയ്യുന്നു...' : 'Analyzing...'}</span>
                   </>
                 ) : (
