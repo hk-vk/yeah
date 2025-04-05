@@ -90,24 +90,28 @@ export function FeedbackSection({ onFeedback, analysisId }: Props) {
           : 'Was this analysis helpful?'}
       </p>
       
-      <div className="flex gap-4">
+      <div className="flex items-center justify-center flex-wrap gap-3 sm:gap-4">
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={() => handleRatingClick(1)}
           disabled={isSubmitting}
           className={clsx(
-            "flex items-center gap-2 px-4 py-2 rounded-lg transition-colors",
+            "flex items-center justify-center gap-2 rounded-lg transition-colors",
+            "px-2 sm:px-4 py-2",
             "bg-green-50 text-green-700 border border-green-200",
             "dark:bg-green-900/30 dark:text-green-300 dark:border-green-800/30",
             "hover:bg-green-100 dark:hover:bg-green-800/40",
             "disabled:opacity-50 disabled:cursor-not-allowed",
             isMalayalam && "text-base",
-            selectedRating === 1 && "ring-2 ring-green-500 dark:ring-green-400"
+            selectedRating === 1 && "ring-2 ring-green-500 dark:ring-green-400",
+            "min-w-[40px] sm:min-w-0"
           )}
         >
-          <ThumbsUp className="w-5 h-5" />
-          {language === 'ml' ? 'അതെ' : 'Yes'}
+          <ThumbsUp className="w-5 h-5 flex-shrink-0" />
+          <span className="hidden sm:inline">
+            {language === 'ml' ? 'അതെ' : 'Yes'}
+          </span>
         </motion.button>
 
         <motion.button
@@ -116,17 +120,21 @@ export function FeedbackSection({ onFeedback, analysisId }: Props) {
           onClick={() => handleRatingClick(0)}
           disabled={isSubmitting}
           className={clsx(
-            "flex items-center gap-2 px-4 py-2 rounded-lg transition-colors",
+            "flex items-center justify-center gap-2 rounded-lg transition-colors",
+            "px-2 sm:px-4 py-2",
             "bg-red-50 text-red-700 border border-red-200",
             "dark:bg-red-900/30 dark:text-red-300 dark:border-red-800/30",
             "hover:bg-red-100 dark:hover:bg-red-800/40",
             "disabled:opacity-50 disabled:cursor-not-allowed",
             isMalayalam && "text-base",
-            selectedRating === 0 && "ring-2 ring-red-500 dark:ring-red-400"
+            selectedRating === 0 && "ring-2 ring-red-500 dark:ring-red-400",
+            "min-w-[40px] sm:min-w-0"
           )}
         >
-          <ThumbsDown className="w-5 h-5" />
-          {language === 'ml' ? 'അല്ല' : 'No'}
+          <ThumbsDown className="w-5 h-5 flex-shrink-0" />
+          <span className="hidden sm:inline">
+            {language === 'ml' ? 'അല്ല' : 'No'}
+          </span>
         </motion.button>
 
         <motion.button
@@ -134,15 +142,19 @@ export function FeedbackSection({ onFeedback, analysisId }: Props) {
           whileTap={{ scale: 0.95 }}
           onClick={() => setShowCommentBox(!showCommentBox)}
           className={clsx(
-            "flex items-center gap-2 px-4 py-2 rounded-lg transition-colors",
+            "flex items-center justify-center gap-2 rounded-lg transition-colors",
+            "px-2 sm:px-4 py-2",
             "bg-blue-50 text-blue-700 border border-blue-200",
             "dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800/30",
             "hover:bg-blue-100 dark:hover:bg-blue-800/40",
-            isMalayalam && "text-base"
+            isMalayalam && "text-base",
+            "min-w-[40px] sm:min-w-0"
           )}
         >
-          <MessageCircle className="w-5 h-5" />
-          {language === 'ml' ? 'അഭിപ്രായം' : 'Comment'}
+          <MessageCircle className="w-5 h-5 flex-shrink-0" />
+          <span className="hidden sm:inline">
+            {language === 'ml' ? 'അഭിപ്രായം' : 'Comment'}
+          </span>
         </motion.button>
       </div>
 
