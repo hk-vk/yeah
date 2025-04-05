@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { motion } from 'framer-motion';
 import { LucideIcon } from 'lucide-react';
 
@@ -9,12 +9,15 @@ interface FeatureCardProps {
   index: number;
 }
 
-export function FeatureCard({ icon: Icon, title, description, index }: FeatureCardProps) {
+const itemVariants = {
+  hidden: { opacity: 0, y: 15 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.4 } }
+};
+
+export const FeatureCard = memo(function FeatureCard({ icon: Icon, title, description }: FeatureCardProps) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay: index * 0.15 }}
+      variants={itemVariants}
       className="relative p-4 sm:p-6 bg-white/60 dark:bg-gray-800/60 rounded-xl shadow-lg backdrop-blur-md group hover:shadow-xl transition-all duration-300 transform-gpu will-change-transform hover:-translate-y-1"
       style={{ willChange: 'transform, box-shadow' }}
     >
@@ -36,4 +39,4 @@ export function FeatureCard({ icon: Icon, title, description, index }: FeatureCa
       </p>
     </motion.div>
   );
-}
+});

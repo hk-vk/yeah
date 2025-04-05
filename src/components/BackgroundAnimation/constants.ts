@@ -6,8 +6,8 @@ export const MALAYALAM_LETTERS = [
 ];
 
 export const ANIMATION_CONFIG = {
-  letterCount: 15,
-  newsItemCount: 10,
+  letterCount:10 ,
+  newsItemCount: 4,
   baseDelay: -20,
   minDuration: 15,
   maxDuration: 35,

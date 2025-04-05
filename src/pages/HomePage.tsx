@@ -46,46 +46,60 @@ export default function HomePage() {
   ];
 
   const sectionVariants = {
-    hidden: { opacity: 0, y: 30 },
+    hidden: { opacity: 0, y: 20 },
     visible: { 
       opacity: 1, 
       y: 0,
-      transition: { duration: 0.6, ease: "easeOut" }
+      transition: { duration: 0.5, ease: "easeOut" }
     }
   };
 
+  const containerVariants = {
+    hidden: { opacity: 1 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 15 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.4 } }
+  };
+
   return (
-    <div className="space-y-16 sm:space-y-24 px-4 sm:px-0">
+    <div className="space-y-16 sm:space-y-20">
       <motion.section 
-        className="text-center pt-8 sm:pt-12"
+        className="text-center pt-8 sm:pt-12 px-4"
         initial="hidden"
         animate="visible"
         variants={sectionVariants}
       >
-        <motion.div
-          className="max-w-3xl mx-auto"
-        >
+        <motion.div className="max-w-3xl mx-auto">
           <motion.h1 
             className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 dark:text-white mb-4 sm:mb-6 bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600"
-            variants={{ hidden: { scale: 0.9, opacity: 0 }, visible: { scale: 1, opacity: 1, transition: { duration: 0.5 } } }}
+            variants={itemVariants}
           >
             {t.heroTitle}
           </motion.h1>
           <motion.p 
             className="text-lg sm:text-xl text-gray-600 dark:text-gray-300 mb-8 sm:mb-10"
-            variants={{ hidden: { y: 20, opacity: 0 }, visible: { y: 0, opacity: 1, transition: { duration: 0.5, delay: 0.1 } } }}
+            variants={itemVariants}
           >
             {t.heroSubtitle}
           </motion.p>
           <motion.div
-            whileHover={{ scale: 1.05, transition: { type: "spring", stiffness: 300 } }}
-            whileTap={{ scale: 0.95 }}
-            variants={{ hidden: { opacity: 0 }, visible: { opacity: 1, transition: { delay: 0.2 } } }}
+            variants={itemVariants}
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+            className="transform-gpu"
+            style={{ willChange: 'transform' }}
           >
             <Link
               to="/analyze"
-              className="inline-flex items-center px-6 py-3 sm:px-8 sm:py-3 border border-transparent text-base font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 shadow-md hover:shadow-lg transition-all duration-300 transform-gpu will-change-transform"
-              style={{ willChange: 'transform, box-shadow' }}
+              className="inline-flex items-center px-6 py-3 sm:px-8 sm:py-3 border border-transparent text-base font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 shadow-md hover:shadow-lg transition-all duration-200"
             >
               {t.getStarted}
             </Link>
@@ -97,15 +111,10 @@ export default function HomePage() {
         variants={sectionVariants}
         initial="hidden"
         whileInView="visible"
-        viewport={{ once: true, amount: 0.2 }}
-        className="relative"
+        viewport={{ once: true, amount: 0.1 }}
+        className="relative px-4"
       >
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 1.5 }}
-          className="absolute inset-0 rounded-xl bg-gradient-radial from-blue-500/5 via-transparent to-transparent"
-        />
+        <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-blue-50/50 dark:from-gray-800/20 to-transparent -z-10"/>
         <Suspense fallback={<LoadingSpinner />}>
           <QuoteSlider />
         </Suspense>
@@ -119,9 +128,13 @@ export default function HomePage() {
         variants={sectionVariants}
         initial="hidden"
         whileInView="visible"
-        viewport={{ once: true, amount: 0.2 }}
+        viewport={{ once: true, amount: 0.1 }}
+        className="px-4"
       >
-        <div className="grid md:grid-cols-3 gap-6 sm:gap-8 max-w-6xl mx-auto">
+        <motion.div 
+          className="grid md:grid-cols-3 gap-6 sm:gap-8 max-w-6xl mx-auto"
+          variants={containerVariants}
+        >
           {features.map((feature, index) => (
             <FeatureCard 
               key={index}
@@ -131,46 +144,43 @@ export default function HomePage() {
               index={index}
             />
           ))}
-        </div>
+        </motion.div>
       </motion.section>
 
       <motion.section 
-        className="text-center"
+        className="text-center px-4"
         variants={sectionVariants}
         initial="hidden"
         whileInView="visible"
-        viewport={{ once: true, amount: 0.3 }}
+        viewport={{ once: true, amount: 0.2 }}
       >
         <motion.div
-          whileHover={{ 
-            y: -5,
-            boxShadow: "0 10px 25px rgba(0, 0, 0, 0.1)",
-            transition: { type: "spring", stiffness: 300 }
-          }}
-          className="p-6 sm:p-10 bg-white/70 dark:bg-gray-800/70 rounded-xl backdrop-blur-md shadow-lg max-w-4xl mx-auto transform-gpu will-change-transform"
+          whileHover={{ y: -3 }}
+          className="p-6 sm:p-10 bg-white/70 dark:bg-gray-800/70 rounded-xl backdrop-blur-md shadow-lg max-w-4xl mx-auto transform-gpu"
           style={{ willChange: 'transform, box-shadow' }}
         >
           <motion.h2 
             className="text-2xl sm:text-3xl font-bold mb-3 sm:mb-4 text-gray-900 dark:text-white"
-            variants={{ hidden: { y: 20, opacity: 0 }, visible: { y: 0, opacity: 1, transition: { duration: 0.5 } } }}
+            variants={itemVariants}
           >
             {t.ctaTitle}
           </motion.h2>
           <motion.p 
             className="text-base sm:text-lg mb-6 sm:mb-8 text-gray-600 dark:text-gray-300 max-w-2xl mx-auto"
-            variants={{ hidden: { y: 20, opacity: 0 }, visible: { y: 0, opacity: 1, transition: { duration: 0.5, delay: 0.1 } } }}
+            variants={itemVariants}
           >
             {t.ctaDescription}
           </motion.p>
           <motion.div
-            whileHover={{ scale: 1.05, transition: { type: "spring", stiffness: 300 } }}
-            whileTap={{ scale: 0.95 }}
-            variants={{ hidden: { opacity: 0 }, visible: { opacity: 1, transition: { delay: 0.2 } } }}
+            variants={itemVariants}
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+            className="transform-gpu"
+            style={{ willChange: 'transform' }}
           >
             <Link
               to="/analyze"
-              className="inline-flex items-center px-6 py-3 sm:px-8 sm:py-3 border-2 border-blue-600 rounded-lg text-base font-medium text-blue-600 hover:bg-blue-600 hover:text-white shadow-sm hover:shadow-md transition-all duration-300 transform-gpu will-change-transform"
-              style={{ willChange: 'transform, background-color, color, box-shadow' }}
+              className="inline-flex items-center px-6 py-3 sm:px-8 sm:py-3 border-2 border-blue-600 rounded-lg text-base font-medium text-blue-600 hover:bg-blue-600 hover:text-white shadow-sm hover:shadow-md transition-all duration-200"
             >
               {t.startAnalyzing}
             </Link>
