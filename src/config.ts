@@ -1,5 +1,6 @@
+
 export const API_CONFIG = {
-  BASE_URL: 'http://localhost:8000',
+  BASE_URL: import.meta.env.VITE_API_URL,
   SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL,
   SUPABASE_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY,
   ENDPOINTS: {

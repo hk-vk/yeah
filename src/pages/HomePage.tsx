@@ -5,6 +5,7 @@ import { Shield, Brain, Zap } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { translations } from '../locales/translations';
 import { FeatureCard } from '../components/home/FeatureCard';
+import StarBorder from '../components/home/StarBorder/StarBorder';
 
 // Lazy load components that are potentially below the fold
 const QuoteSlider = lazy(() => 
@@ -97,12 +98,14 @@ export default function HomePage() {
             className="transform-gpu"
             style={{ willChange: 'transform' }}
           >
-            <Link
+            <StarBorder 
+              as={Link}
               to="/analyze"
-              className="inline-flex items-center px-6 py-3 sm:px-8 sm:py-3 border border-transparent text-base font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 shadow-md hover:shadow-lg transition-all duration-200"
+              color="#2563eb"
+              className="border-none"
             >
               {t.getStarted}
-            </Link>
+            </StarBorder>
           </motion.div>
         </motion.div>
       </motion.section>

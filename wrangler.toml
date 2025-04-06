@@ -1,23 +1,9 @@
-[build]
-command = "pnpm build"
-publish = "dist"
-
-[site]
-bucket = "dist"
-
-# Pages configuration
-[pages]
-build_output_dir = "dist"
-custom_domains = ["yeahya.pages.dev"]
-
-# The production environment configuration
-[env.production]
 name = "yeahya"
+pages_build_output_dir = "dist"
 
-# Environment variables will be managed through Cloudflare Pages dashboard
-[env.production.vars]
-# Environment variables should be set via `wrangler secret put` command
-
-# Preview environment (for branch deployments)
-[env.preview]
-name = "yeahya-preview" 
+[vars]
+VITE_API_URL = "https://administrative-prissie-hari3048-b8cb2af3.koyeb.app"
+VITE_SUPABASE_URL = "https://cxjdkqkzmtyudkwwhelq.supabase.co"
+VITE_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN4amRrcWt6bXR5dWRrd3doZWxxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzU4MDE1NzEsImV4cCI6MjA1MTM3NzU3MX0.GIuHV-ov2Zm-G09rOHuy1cIrvrzVaDg7CPQmH3UyrUE"
+VITE_SUPABASE_SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN4amRrcWt6bXR5dWRrd3doZWxxIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTczNTgwMTU3MSwiZXhwIjoyMDUxMzc3NTcxfQ.fzSh9LAyM9OJCcx3zj0Qy5Af4H-7jTuycXs4ZiIZD-E"
+VITE_EXA_API_KEY = "f719f358-7ec7-4098-9c0f-07698598b95e"
