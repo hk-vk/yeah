@@ -5,8 +5,7 @@ export interface FeedbackData {
   comment?: string;
   feedback_text?: string;
   user_id?: string;
-  analysis_id?: string;
-  analysis_result_id?: string;
+  analysis_result_id: string; // Make this required and consistent
 }
 
 export const feedbackService = {
@@ -24,7 +23,7 @@ export const feedbackService = {
         rating: data.rating,
         comment: data.comment || data.feedback_text,
         user_id: data.user_id,
-        analysis_result_id: data.analysis_result_id || data.analysis_id, // Support both field names
+        analysis_result_id: data.analysis_result_id,
         created_at: new Date().toISOString()
       };
 
@@ -48,7 +47,7 @@ export const feedbackService = {
     try {
       const { data, error } = await supabase
         .from('feedback')
-        .select('*')
+        .select('*, analysis_result(*)')  // Join with analysis_result table
         .order('created_at', { ascending: false });
 
       if (error) {

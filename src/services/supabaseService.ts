@@ -244,9 +244,14 @@ export class SupabaseService {
       // Check if the analysisId is a local ID
       const isLocalId = analysisId.startsWith('local-');
       
+      if (isLocalId) {
+        console.warn('Attempted to save feedback for a local analysis ID');
+        throw new Error('Cannot save feedback for temporary analysis');
+      }
+
       // Create the feedback object
       const feedbackData = {
-        analysis_result_id: isLocalId ? null : analysisId,
+        analysis_result_id: analysisId,
         rating,
         comment,
         user_id: userId,
@@ -257,17 +262,19 @@ export class SupabaseService {
 
       const { data, error } = await supabase
         .from('feedback')
-        .insert(feedbackData);
+        .insert(feedbackData)
+        .select()
+        .single();
 
       if (error) {
         console.error('Error saving feedback to Supabase:', error);
-        return { id: `local-feedback-${Date.now()}` };
+        throw error;
       }
 
-      return data || { id: `saved-feedback-${Date.now()}` };
+      return data;
     } catch (error) {
       console.error('Exception saving feedback to Supabase:', error);
-      return { id: `local-feedback-${Date.now()}` };
+      throw error;
     }
   }
 
@@ -376,4 +383,4 @@ export class SupabaseService {
       return [];
     }
   }
-} 
+}

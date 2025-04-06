@@ -2,12 +2,16 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { SupabaseService } from '../../services/supabaseService';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { Clock, Search, Image, Link, FileText, AlertCircle, Check, X, Info, ExternalLink, BarChart, ChevronDown } from 'lucide-react';
+import { Clock, Image, Link, FileText, AlertCircle, Check, X, Info, ExternalLink, BarChart, ChevronDown } from 'lucide-react';
 import clsx from 'clsx';
 import { format } from 'date-fns';
 import type { AnalysisResult } from '../../types/supabase';
 
-export function PastSearches() {
+interface Props {
+  onSelectAnalysis?: (analysis: AnalysisResult) => void;
+}
+
+export function PastSearches({ onSelectAnalysis }: Props) {
   const [analyses, setAnalyses] = useState<AnalysisResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -16,7 +20,7 @@ export function PastSearches() {
   const [hasMore, setHasMore] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
   const limit = 20;
-  
+
   const { user } = useAuth();
   const { language } = useLanguage();
   const isMalayalam = language === 'ml';
@@ -24,7 +28,7 @@ export function PastSearches() {
   useEffect(() => {
     const fetchAnalyses = async () => {
       if (!user?.id) return;
-      
+
       try {
         setLoading(true);
         const { data, count } = await SupabaseService.getAnalysisByUserId(user.id, 1, limit);
@@ -54,12 +58,12 @@ export function PastSearches() {
 
   const loadMore = async () => {
     if (!user?.id || loadingMore || !hasMore) return;
-    
+
     setLoadingMore(true);
     try {
       const nextPage = page + 1;
       const { data, count } = await SupabaseService.getAnalysisByUserId(user.id, nextPage, limit);
-      
+
       if (data.length > 0) {
         setAnalyses(prev => [...prev, ...data]);
         setPage(nextPage);
@@ -71,6 +75,12 @@ export function PastSearches() {
       console.error('Error loading more analyses:', error);
     } finally {
       setLoadingMore(false);
+    }
+  };
+
+  const handleAnalysisClick = (analysis: AnalysisResult) => {
+    if (onSelectAnalysis) {
+      onSelectAnalysis(analysis);
     }
   };
 
@@ -394,8 +404,9 @@ export function PastSearches() {
           {analyses.map((analysis) => (
             <div
               key={analysis.id}
+              onClick={() => handleAnalysisClick(analysis)}
               className={clsx(
-                "p-4 rounded-lg border transition-colors",
+                "p-4 rounded-lg border transition-colors cursor-pointer",
                 "bg-white/90 dark:bg-gray-800/90",
                 "border-gray-100 dark:border-gray-700",
                 "hover:bg-gray-50 dark:hover:bg-gray-700/50"
@@ -481,4 +492,4 @@ export function PastSearches() {
       )}
     </div>
   );
-} 
+}

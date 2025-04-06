@@ -38,7 +38,7 @@ export interface AnalysisResult {
 
 export interface Feedback {
   id: string;
-  analysis_result_id?: string;
+  analysis_result_id: string;  // Make this required and consistent
   user_id?: string;
   rating: number;
   comment?: string;
@@ -80,4 +80,4 @@ export type Database = {
       };
     };
   };
-}; 
+};
