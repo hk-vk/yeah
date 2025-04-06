@@ -6,7 +6,7 @@ import { ComprehensiveAnalysisCard } from '../ComprehensiveAnalysisCard';
 import { FeedbackSection } from '../FeedbackSection';
 import { LoadingSpinner } from './LoadingSpinner';
 import { AnalysisHistory } from '../AnalysisHistory';
-import type { AnalysisResult, ImageAnalysisResult, TextAnalysisResult, InputType, BaseAnalysisResult } from '../../types/analysis';
+import type { AnalysisResult, ImageAnalysisResult, TextAnalysisResult, InputType } from '../../types/analysis';
 import { analyzeService } from '../../services/analyzeService';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -15,10 +15,6 @@ import { useAuth } from '../../contexts/AuthContext';
 import { feedbackService } from '../../services/feedbackService';
 import { UrlErrorCard } from '../UrlErrorCard';
 import { UrlAnalysisCard } from '../UrlAnalysisCard';
-
-interface AnalysisError {
-  error: { type: string; message: string };
-}
 
 // Type guards
 function isTextAnalysisResult(result: any): result is TextAnalysisResult {
@@ -44,67 +40,6 @@ export function MainContent() {
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
   const [analysisHistoryKey, setAnalysisHistoryKey] = useState(Date.now());
 
-  const handleAnalyzeUrl = async (url: string) => {
-    try {
-      const result = await analyzeService.analyzeUrl(url, user?.id);
-
-      if (result && 'error' in result) {
-        const urlError = result as AnalysisError;
-        setUrlError({
-          message: urlError.error.message || 'Failed to analyze URL',
-          url: url,
-        });
-        setTextResult(null);
-        setImageResult(null);
-        return;
-      }
-
-      if (isTextAnalysisResult(result)) {
-        setTextResult({
-          ...result,
-          type: 'url',
-        });
-
-        if (result.input?.image_url) {
-          setCurrentImageContent(result.input.image_url);
-        }
-
-        if (result.imageAnalysis) {
-          setImageResult(result.imageAnalysis);
-        }
-
-        setActiveResultIndex(0);
-      }
-    } catch (error: any) {
-      console.error('URL analysis failed:', error);
-      let errorMessage = '';
-
-      if (typeof error === 'string') {
-        errorMessage = error;
-      } else if (error.message) {
-        errorMessage = error.message;
-      } else {
-        errorMessage = 'An unknown error occurred while analyzing the URL';
-      }
-
-      if (errorMessage.includes('status 400')) {
-        errorMessage = 'Request failed with status 400. Sorry, we had trouble finding contents for the given URL.';
-      } else if (errorMessage.includes('status 404')) {
-        errorMessage = 'Request failed with status 404. The URL could not be found. Please check if the URL is correct.';
-      } else if (errorMessage.includes('status 500')) {
-        errorMessage = 'Request failed with status 500. The server encountered an internal error. Please try again later.';
-      }
-
-      setUrlError({
-        message: errorMessage,
-        url: url,
-      });
-
-      setTextResult(null);
-      setImageResult(null);
-    }
-  };
-
   const handleAnalyze = async ({
     type,
     content,
@@ -126,7 +61,67 @@ export function MainContent() {
 
     try {
       if (type === 'url' && processedContent) {
-        await handleAnalyzeUrl(processedContent);
+        try {
+          const result = await analyzeService.analyzeUrl(processedContent, user?.id);
+
+          if (result && 'error' in result && result.error.type === 'URL_ERROR') {
+            setUrlError({
+              message: result.error.message || 'Failed to analyze URL',
+              url: processedContent,
+            });
+            setTextResult(null);
+            setImageResult(null);
+            setIsAnalyzing(false);
+            return;
+          }
+
+          if (isTextAnalysisResult(result)) {
+            setTextResult({
+              ...result,
+              type: 'url',
+            });
+
+            if (result.input?.image_url) {
+              setCurrentImageContent(result.input.image_url);
+            }
+
+            if (result.imageAnalysis) {
+              setImageResult({
+                ...result.imageAnalysis,
+                type: 'image',
+              });
+            }
+
+            setActiveResultIndex(0);
+          }
+        } catch (error: any) {
+          console.error('URL analysis failed:', error);
+          let errorMessage = '';
+
+          if (typeof error === 'string') {
+            errorMessage = error;
+          } else if (error.message) {
+            errorMessage = error.message;
+          } else {
+            errorMessage = 'An unknown error occurred while analyzing the URL';
+          }
+
+          if (errorMessage.includes('status 400')) {
+            errorMessage = 'Request failed with status 400. Sorry, we had trouble finding contents for the given URL.';
+          } else if (errorMessage.includes('status 404')) {
+            errorMessage = 'Request failed with status 404. The URL could not be found. Please check if the URL is correct.';
+          } else if (errorMessage.includes('status 500')) {
+            errorMessage = 'Request failed with status 500. The server encountered an internal error. Please try again later.';
+          }
+
+          setUrlError({
+            message: errorMessage,
+            url: processedContent,
+          });
+
+          setTextResult(null);
+          setImageResult(null);
+        }
         setIsAnalyzing(false);
         return;
       }
@@ -289,7 +284,7 @@ export function MainContent() {
     setAnalysisHistoryKey(Date.now());
   }, [user]);
 
-  const handleSelectHistory = (analysis: BaseAnalysisResult) => {
+  const handleSelectHistory = (analysis: AnalysisResult) => {
     setTextResult(null);
     setImageResult(null);
     setUrlError(null);
@@ -300,37 +295,30 @@ export function MainContent() {
     setExtractedText('');
 
     try {
-      const input = analysis.input || {};
-      
-      if (input.text) setCurrentContent(input.text);
-      if (input.url) setCurrentContent(input.url);
-      if (input.image_url) setCurrentImageContent(input.image_url);
-
       switch (analysis.type) {
         case 'text':
         case 'url':
-          setTextResult(analysis as TextAnalysisResult);
+          if ('text' in analysis.input) setCurrentContent(analysis.input.text);
+          if ('url' in analysis.input) setCurrentContent(analysis.input.url);
+          setTextResult(analysis.result as TextAnalysisResult);
           setActiveResultIndex(0);
           break;
         case 'image':
-          setImageResult(analysis as ImageAnalysisResult);
+          if ('image_url' in analysis.input) setCurrentImageContent(analysis.input.image_url);
+          setImageResult(analysis.result as ImageAnalysisResult);
           setActiveResultIndex(0);
           break;
         case 'text_image':
-          if ('details' in analysis && analysis.details?.text_analysis) {
-            setTextResult({
-              ...analysis,
-              type: 'text',
-              ISFAKE: 0,
-              CONFIDENCE: 1,
-              EXPLANATION_EN: '',
-              EXPLANATION_ML: ''
-            });
-            setExtractedText(analysis.details.text_analysis.extractedText || 
-                           analysis.details.text_analysis.extracted_text || '');
+          if ('text' in analysis.input) setCurrentContent(analysis.input.text);
+          if ('image_url' in analysis.input) setCurrentImageContent(analysis.input.image_url);
+          if (analysis.result && 'details' in analysis.result && analysis.result.details?.text_analysis) {
+            setTextResult(analysis.result.details.text_analysis as TextAnalysisResult);
+            if ('extractedText' in analysis.result.details.text_analysis) {
+              setExtractedText(analysis.result.details.text_analysis.extractedText || '');
+            }
           }
-          setImageResult(analysis as ImageAnalysisResult);
-          setActiveResultIndex(analysis.details?.text_analysis ? 0 : 1);
+          setImageResult(analysis.result as ImageAnalysisResult);
+          setActiveResultIndex(analysis.result.details?.text_analysis ? 0 : 1);
           break;
       }
     } catch (error) {

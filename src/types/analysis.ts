@@ -1,19 +1,8 @@
 export interface BaseAnalysisResult {
   id?: string;
   type: 'text' | 'image' | 'url' | 'text_image';
-  input?: {
-    text?: string;
-    url?: string;
-    image_url?: string;
-  };
-  result?: any;
   created_at?: string;
   updated_at?: string;
-}
-
-export interface UrlError {
-  type: 'URL_ERROR';
-  message: string;
 }
 
 export interface TextAnalysisResult extends BaseAnalysisResult {
@@ -22,9 +11,12 @@ export interface TextAnalysisResult extends BaseAnalysisResult {
   CONFIDENCE: number;
   EXPLANATION_EN: string;
   EXPLANATION_ML: string;
-  verdict?: string;
-  explanation?: string;
-  score?: number;
+  input?: {
+    url?: string;
+    title?: string;
+    published_date?: string;
+    image_url?: string;
+  };
   urlAnalysis?: {
     url: string;
     prediction: string;
@@ -47,21 +39,17 @@ export interface ImageAnalysisResult extends BaseAnalysisResult {
     ai_generated: boolean;
     reverse_search: {
       found: boolean;
-      matches?: Array<{
-        url: string;
-        title: string;
-      }>;
+      matches?: any[];
     };
     deepfake: boolean;
     tampering_analysis: boolean;
     image_caption: string;
     text_analysis?: {
-      user_text?: string;
-      extracted_text?: string;
-      extractedText?: string;
-      mismatch?: boolean;
-      context_similarity?: number;
-      context_mismatch?: boolean;
+      user_text: string;
+      extracted_text: string;
+      mismatch: boolean;
+      context_similarity: number;
+      context_mismatch: boolean;
     };
   };
 }
