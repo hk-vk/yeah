@@ -6,7 +6,7 @@ import { ComprehensiveAnalysisCard } from '../ComprehensiveAnalysisCard';
 import { FeedbackSection } from '../FeedbackSection';
 import { LoadingSpinner } from './LoadingSpinner';
 import { AnalysisHistory } from '../AnalysisHistory';
-import type { AnalysisResult, ImageAnalysisResult, TextAnalysisResult, InputType } from '../../types/analysis';
+import type { AnalysisResult, ImageAnalysisResult, TextAnalysisResult, InputType, HistoryItem } from '../../types';
 import { analyzeService } from '../../services/analyzeService';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -24,6 +24,37 @@ function isTextAnalysisResult(result: any): result is TextAnalysisResult {
 function isImageAnalysisResult(result: any): result is ImageAnalysisResult {
   return result && 'details' in result && 'type' in result;
 }
+
+// Function to determine the correct card order when dealing with URL analysis
+const getCardType = (index: number, textResult: TextAnalysisResult | null, imageResult: ImageAnalysisResult | null): string => {
+  // For URL analysis with image: 0=Comprehensive, 1=Image, 2=URL Analysis
+  if (textResult?.type === 'url' && textResult.imageAnalysis) {
+    if (index === 0) return 'comprehensive';
+    if (index === 1) return 'image';
+    if (index === 2) return 'url';
+  } 
+  // For URL analysis without image: 0=Comprehensive, 1=URL Analysis
+  else if (textResult?.type === 'url' && textResult.urlAnalysis) {
+    if (index === 0) return 'comprehensive';
+    if (index === 1) return 'url';
+  } 
+  // For image only analysis: 0=Image
+  else if (imageResult && !textResult) {
+    return 'image';
+  } 
+  // For text+image analysis: 0=Comprehensive, 1=Image
+  else if (textResult && imageResult) {
+    if (index === 0) return 'comprehensive';
+    if (index === 1) return 'image';
+  }
+  // Simple text analysis: just show comprehensive
+  else if (textResult) {
+    return 'comprehensive';
+  }
+  
+  // Default case
+  return 'none';
+};
 
 export function MainContent() {
   const [textResult, setTextResult] = useState<TextAnalysisResult | null>(null);
@@ -64,9 +95,21 @@ export function MainContent() {
         try {
           const result = await analyzeService.analyzeUrl(processedContent, user?.id);
 
-          if (result && 'error' in result && result.error.type === 'URL_ERROR') {
+          if (
+            result && 
+            typeof result === 'object' && 
+            'error' in result && 
+            typeof result.error === 'object' && 
+            result.error !== null &&
+            'type' in result.error &&
+            result.error.type === 'URL_ERROR'
+          ) {
+            const errorMessage = (typeof (result.error as any).message === 'string') 
+              ? (result.error as any).message 
+              : 'Failed to analyze URL';
+              
             setUrlError({
-              message: result.error.message || 'Failed to analyze URL',
+              message: errorMessage,
               url: processedContent,
             });
             setTextResult(null);
@@ -189,6 +232,7 @@ export function MainContent() {
               }
             }
 
+            // Update active index again after text analysis completes
             setActiveResultIndex(textResult ? 0 : 1);
           }
         } catch (error) {
@@ -209,7 +253,17 @@ export function MainContent() {
   const navigateResults = (direction: 'next' | 'prev') => {
     const total = getTotalResults();
     if (total <= 1) return;
-    setActiveResultIndex((prevIndex) => (prevIndex + (direction === 'next' ? 1 : -1) + total) % total);
+    
+    // Calculate next index with wrapping
+    const newIndex = (activeResultIndex + (direction === 'next' ? 1 : -1) + total) % total;
+    
+    // Verify the new index is valid by checking if there's a card type for it
+    if (getCardType(newIndex, textResult, imageResult) !== 'none') {
+      setActiveResultIndex(newIndex);
+    } else {
+      // Skip this invalid index and try the next one
+      setActiveResultIndex((activeResultIndex + (direction === 'next' ? 2 : -2) + total) % total);
+    }
   };
 
   const handleFeedback = async (rating: number, comment?: string) => {
@@ -260,16 +314,28 @@ export function MainContent() {
   }, [hasMultipleResults, navigateResults]);
 
   const getTotalResults = () => {
-    let count = 0;
-    if (textResult) {
-      count++; // Comprehensive Analysis
-      if (textResult.type === 'url') {
-        if (textResult.urlAnalysis) count++; // URL Analysis
-        if (textResult.imageAnalysis) count++; // Image Analysis if available
-      }
+    // For URL analysis with image
+    if (textResult?.type === 'url' && textResult.imageAnalysis && textResult.urlAnalysis) {
+      return 3; // Comprehensive, Image, URL
     }
-    if (imageResult) count++;
-    return count;
+    // For URL analysis without image
+    else if (textResult?.type === 'url' && textResult.urlAnalysis) {
+      return 2; // Comprehensive, URL
+    }
+    // For image only analysis
+    else if (imageResult && !textResult) {
+      return 1; // Image only
+    }
+    // For text + image analysis
+    else if (textResult && imageResult) {
+      return 2; // Comprehensive, Image
+    }
+    // For text only analysis
+    else if (textResult) {
+      return 1; // Comprehensive only
+    }
+    
+    return 0; // No results
   };
 
   const handleRetryUrl = () => {
@@ -284,7 +350,7 @@ export function MainContent() {
     setAnalysisHistoryKey(Date.now());
   }, [user]);
 
-  const handleSelectHistory = (analysis: AnalysisResult) => {
+  const handleSelectHistory = (item: HistoryItem) => {
     setTextResult(null);
     setImageResult(null);
     setUrlError(null);
@@ -295,34 +361,57 @@ export function MainContent() {
     setExtractedText('');
 
     try {
-      switch (analysis.type) {
+      const inputData = item.input || {};
+      const resultData = item.result || {};
+
+      switch (item.type) {
         case 'text':
         case 'url':
-          if ('text' in analysis.input) setCurrentContent(analysis.input.text);
-          if ('url' in analysis.input) setCurrentContent(analysis.input.url);
-          setTextResult(analysis.result as TextAnalysisResult);
+          setCurrentContent(inputData.text || inputData.url || '');
+          if (isTextAnalysisResult(resultData)) {
+            setTextResult({ ...resultData, type: item.type as 'text' | 'url' });
+          } else {
+            console.warn('History item result does not match TextAnalysisResult structure', resultData);
+            toast.error('Error loading text/url history item');
+          }
           setActiveResultIndex(0);
           break;
         case 'image':
-          if ('image_url' in analysis.input) setCurrentImageContent(analysis.input.image_url);
-          setImageResult(analysis.result as ImageAnalysisResult);
+          setCurrentImageContent(inputData.image_url || null);
+          if (isImageAnalysisResult(resultData)) {
+            setImageResult({ ...resultData, type: 'image' });
+          } else {
+            console.warn('History item result does not match ImageAnalysisResult structure', resultData);
+            toast.error('Error loading image history item');
+          }
           setActiveResultIndex(0);
           break;
         case 'text_image':
-          if ('text' in analysis.input) setCurrentContent(analysis.input.text);
-          if ('image_url' in analysis.input) setCurrentImageContent(analysis.input.image_url);
-          if (analysis.result && 'details' in analysis.result && analysis.result.details?.text_analysis) {
-            setTextResult(analysis.result.details.text_analysis as TextAnalysisResult);
-            if ('extractedText' in analysis.result.details.text_analysis) {
-              setExtractedText(analysis.result.details.text_analysis.extractedText || '');
-            }
+          setCurrentContent(inputData.text || '');
+          setCurrentImageContent(inputData.image_url || null);
+          
+          if (isImageAnalysisResult(resultData)) {
+             setImageResult({ ...resultData, type: 'text_image' });
+
+             if (resultData.details?.text_analysis && isTextAnalysisResult(resultData.details.text_analysis)) {
+               setTextResult({ ...resultData.details.text_analysis, type: 'text' }); 
+               setExtractedText(resultData.details.text_analysis.extracted_text || '');
+             } else {
+               setTextResult(null);
+             }
+          } else {
+             console.warn('History item result does not match ImageAnalysisResult structure for text_image', resultData);
+             toast.error('Error loading text+image history item');
           }
-          setImageResult(analysis.result as ImageAnalysisResult);
-          setActiveResultIndex(analysis.result.details?.text_analysis ? 0 : 1);
+          setActiveResultIndex(resultData.details?.text_analysis ? 0 : 1);
+          break;
+        default:
+          console.warn('Unknown history item type:', item.type);
+          toast.error('Unknown analysis type in history');
           break;
       }
     } catch (error) {
-      console.error('Error loading from history:', error);
+      console.error('Error processing history item:', error);
       toast.error(language === 'ml' ? 'ചരിത്രത്തിൽ നിന്ന് ലോഡുചെയ്യുന്നതിൽ പിശക്' : 'Error loading from history');
     }
   };
@@ -368,62 +457,58 @@ export function MainContent() {
             <div className="flex flex-col space-y-6">
               <div className="relative overflow-hidden min-h-[400px]">
                 <AnimatePresence initial={false} custom={activeResultIndex} mode="popLayout">
-                  {/* Comprehensive Analysis */}
-                  {textResult && activeResultIndex === 0 && (
+                  {/* Comprehensive Analysis Card */}
+                  {(getCardType(activeResultIndex, textResult, imageResult) === 'comprehensive' && textResult) && (
                     <motion.div
                       key="comprehensive"
                       variants={cardVariants}
                       initial="enter"
                       animate="center"
                       exit="exit"
-                      custom={0}
+                      custom={activeResultIndex}
                       layout
                     >
                       <ComprehensiveAnalysisCard 
                         textAnalysis={textResult} 
                         imageAnalysis={textResult.type === 'url' ? textResult.imageAnalysis : null}
                         urlAnalysis={textResult.type === 'url' ? textResult.urlAnalysis : null}
-                        originalContent={currentContent}
-                        onFeedback={handleFeedback}
                       />
                     </motion.div>
                   )}
 
-                  {/* URL Analysis */}
-                  {textResult?.type === 'url' && textResult.urlAnalysis && activeResultIndex === 1 && (
-                    <motion.div
-                      key="url"
-                      variants={cardVariants}
-                      initial="enter"
-                      animate="center"
-                      exit="exit"
-                      custom={1}
-                      layout
-                    >
-                      <UrlAnalysisCard 
-                        urlAnalysis={textResult.urlAnalysis}
-                        onNavigate={navigateResults}
-                      />
-                    </motion.div>
-                  )}
-
-                  {/* Image Analysis - either from URL or direct upload */}
-                  {((textResult?.type === 'url' && textResult.imageAnalysis && activeResultIndex === 2) ||
-                    (imageResult && activeResultIndex === (textResult ? 1 : 0))) && (
+                  {/* Image Analysis Card */}
+                  {(getCardType(activeResultIndex, textResult, imageResult) === 'image') && (
                     <motion.div
                       key="image"
                       variants={cardVariants}
                       initial="enter"
                       animate="center"
                       exit="exit"
-                      custom={2}
+                      custom={activeResultIndex}
                       layout
                     >
                       <ImageResultCard 
-                        result={textResult?.type === 'url' ? textResult.imageAnalysis : imageResult} 
+                        result={imageResult || (textResult?.imageAnalysis as ImageAnalysisResult)} 
                         imageUrl={currentImageContent}
                         extractedText={extractedText}
-                        onFeedback={handleFeedback}
+                      />
+                    </motion.div>
+                  )}
+                  
+                  {/* URL Analysis Card */}
+                  {(getCardType(activeResultIndex, textResult, imageResult) === 'url' && textResult?.type === 'url' && textResult.urlAnalysis) && (
+                    <motion.div
+                      key="url"
+                      variants={cardVariants}
+                      initial="enter"
+                      animate="center"
+                      exit="exit"
+                      custom={activeResultIndex}
+                      layout
+                    >
+                      <UrlAnalysisCard 
+                        urlAnalysis={textResult.urlAnalysis}
+                        onNavigate={navigateResults}
                       />
                     </motion.div>
                   )}
@@ -461,16 +546,13 @@ export function MainContent() {
 
       {!isAnalyzing && feedbackAnalysisType && feedbackResultId && (
         <FeedbackSection
-          analysisType={feedbackAnalysisType}
-          resultId={feedbackResultId}
+          analysisId={feedbackResultId}
           onFeedback={handleFeedback}
-          feedbackLoading={feedbackLoading}
-          feedbackSubmitted={feedbackSubmitted}
         />
       )}
 
       {user && (
-        <AnalysisHistory key={analysisHistoryKey} userId={user.id} onSelectAnalysis={handleSelectHistory} />
+        <AnalysisHistory key={analysisHistoryKey} onSelectAnalysis={handleSelectHistory} />
       )}
     </div>
   );

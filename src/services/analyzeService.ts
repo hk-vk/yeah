@@ -151,11 +151,10 @@ export const analyzeService = {
         text?: string,
         userId?: string
     ): Promise<ImageAnalysisResult> {
-        let savedAnalysisId: string | null = null; // To store the final ID if saving succeeds
         try {
             console.log('Starting image analysis with:', { imageUrl, hasText: !!text });
             
-            let imageBlob: Blob | undefined; // Explicitly type imageBlob
+            let imageBlob: Blob | undefined;
             let formData = new FormData();
             
             if (imageUrl.startsWith('data:')) {
@@ -183,90 +182,80 @@ export const analyzeService = {
             const result = await response.json();
             console.log('Image analysis result:', result);
 
-            // --- Immediate Return --- 
-            // Create the result object to return immediately to the UI
-            const immediateResult: ImageAnalysisResult = {
-                ...result,
-                id: `local-${Date.now()}`, // Use a temporary local ID
-                type: text ? 'text_image' : 'image',
-                input: {
-                    text,
-                    images: [{
-                        url: imageUrl,
-                        type: imageUrl.startsWith('data:') ? 'uploaded' : 'url'
-                    }]
-                }
-            };
+            // --- Revert to Synchronous Saving --- 
+            try {
+                console.log('Attempting to save analysis to Supabase...');
+                const savedAnalysis = await saveAnalysisToSupabase(
+                    text ? 'text_image' : 'image',
+                    {
+                        // Save simplified input as per previous version
+                        image_url: 'image_processed', 
+                        text: text,
+                    },
+                    result, 
+                    userId
+                );
+                console.log('Successfully saved analysis to Supabase. ID:', savedAnalysis.id);
 
-            // --- Background Saving --- 
-            // Define an async function to handle saving in the background
-            const saveInBackground = async () => {
+                // Store the image in Supabase (still potentially async, but after main save)
                 try {
-                    console.log('Attempting to save analysis to Supabase in background...');
-                    const savedAnalysis = await saveAnalysisToSupabase(
-                        text ? 'text_image' : 'image',
-                        {
-                            text: text,
-                            images: [{
-                                url: imageUrl,
-                                type: imageUrl.startsWith('data:') ? 'uploaded' : 'url'
-                            }]
-                        },
-                        result, // Pass the original backend result
-                        userId
-                    );
-                    savedAnalysisId = savedAnalysis.id; // Store the final ID
-                    console.log('Successfully saved analysis to Supabase. ID:', savedAnalysisId);
-
-                    // Store the image in Supabase
-                    console.log('Attempting to store image in background...');
-                    if (imageBlob) { // Check if imageBlob is defined
-                        await imageService.uploadImage(
-                            imageBlob,
-                            savedAnalysis.id,
-                            'uploaded'
-                        );
-                    } else if (imageUrl.startsWith('http')) {
-                        await imageService.storeImageUrl(
-                            imageUrl,
-                            savedAnalysis.id,
-                            'url'
-                        );
-                    }
-                    console.log('Successfully stored image.');
-
-                } catch (saveError) {
-                    console.error('Error saving image analysis/storage in background:', saveError);
-                    // Handle error appropriately, maybe update UI state if needed
+                   console.log('Attempting to store image...');
+                   if (imageBlob) {
+                       // --- Temporarily Commented Out Image Saving ---
+                       await imageService.uploadImage(
+                           imageBlob,
+                           savedAnalysis.id,
+                           'uploaded'
+                       );
+                       // --- End of Temporarily Commented Out Code ---
+                   } else if (imageUrl.startsWith('http')) {
+                       // --- Temporarily Commented Out Image Saving ---
+                       await imageService.storeImageUrl(
+                           imageUrl,
+                           savedAnalysis.id,
+                           'url'
+                       );
+                       // --- End of Temporarily Commented Out Code ---
+                   }
+                   console.log('Successfully stored image.');
+                } catch (imageStorageError) {
+                   console.error('Error storing image:', imageStorageError);
+                   // Proceed even if image storage fails
                 }
-            };
+                
+                // Return result combined with Supabase ID, NO input field
+                return {
+                    ...result,
+                    id: savedAnalysis.id,
+                    type: text ? 'text_image' : 'image'
+                    // input field removed
+                };
 
-            // Trigger the background saving process but don't wait for it
-            saveInBackground(); 
-
-            // Return the immediate result to the UI
-            return immediateResult;
-            // --- End of Modifications ---
+            } catch (saveError) {
+                console.error('Error saving image analysis to Supabase:', saveError);
+                // If saving fails, return result with a local ID
+                return {
+                    ...result,
+                    id: `local-${Date.now()}`,
+                    type: text ? 'text_image' : 'image'
+                    // input field removed
+                };
+            }
+            // --- End of Reverted Logic ---
 
         } catch (error) {
-            console.error('Error during image analysis:', error);
-            // Still return a mock/error result immediately if the fetch itself fails
-            return {
-                // Provide a default/error structure matching ImageAnalysisResult
+            console.error('Error during image analysis fetch:', error);
+            // Return an error structure if the fetch itself fails
+            const errorResult: ImageAnalysisResult = {
                 verdict: 'Error',
                 score: 0,
                 details: { ai_generated: false, reverse_search: { found: false }, deepfake: false, tampering_analysis: false, image_caption: '' },
                 id: `error-${Date.now()}`,
                 type: text ? 'text_image' : 'image',
-                input: {
-                    text,
-                    images: [{
-                        url: imageUrl,
-                        type: imageUrl.startsWith('data:') ? 'uploaded' : 'url'
-                    }]
-                },
                 error: error instanceof Error ? error.message : 'Unknown analysis error'
             };
+            // We need to cast because the base type doesn't strictly require `error`
+            return errorResult as ImageAnalysisResult; 
         }
     },
 
@@ -301,6 +290,21 @@ export const analyzeService = {
             const extractedContent = await exaService.extractUrlContent(url);
             console.log('Extracted content:', extractedContent);
 
+            // Get image URL from extracted content
+            const imageUrl = extractedContent.image;
+            let imageAnalysisResult = null;
+
+            // If an image URL was extracted, analyze it
+            if (imageUrl && imageUrl.length > 10) {
+                console.log('Analyzing image from URL:', imageUrl);
+                try {
+                    imageAnalysisResult = await this.analyzeImage(imageUrl, extractedContent.text, userId);
+                    console.log('Image analysis result from URL image:', imageAnalysisResult);
+                } catch (imageAnalysisError) {
+                    console.error('Error analyzing image from URL:', imageAnalysisError);
+                }
+            }
+
             // Analyze the extracted text
             let textAnalysisResult = null;
             try {
@@ -334,11 +338,13 @@ export const analyzeService = {
                     { 
                         url,
                         title: extractedContent.title,
-                        published_date: extractedContent.publishedDate
+                        published_date: extractedContent.publishedDate,
+                        image_url: imageUrl || null
                     },
                     { 
                         ...textAnalysisResult,
                         urlAnalysis: urlAnalysisData,
+                        imageAnalysis: imageAnalysisResult,
                         content: extractedContent.text,
                         image: extractedContent.image
                     },
@@ -373,8 +379,13 @@ export const analyzeService = {
                 id: savedAnalysis.id,
                 type: 'url',
                 urlAnalysis: urlAnalysisData,
-                content: extractedContent.text,
-                image: extractedContent.image
+                imageAnalysis: imageAnalysisResult,
+                input: {
+                    url,
+                    title: extractedContent.title,
+                    published_date: extractedContent.publishedDate,
+                    image_url: imageUrl || null
+                }
             };
         } catch (error) {
             console.error('Error during URL analysis:', error);

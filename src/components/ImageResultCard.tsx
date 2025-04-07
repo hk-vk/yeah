@@ -64,6 +64,36 @@ export const ImageResultCard: FC<ImageResultCardProps> = ({ result, imageUrl, ex
   const [expandedMatches, setExpandedMatches] = useState(false);
   const [expandedTextMatches, setExpandedTextMatches] = useState(false);
   
+  // Modify the validation to be more lenient to allow more result types to render
+  if (!result) {
+    return (
+      <div className="text-red-500 text-center p-4 bg-white dark:bg-gray-800 rounded-lg shadow-md">
+        {language === 'ml' ? 'ഫലങ്ങൾ ലഭ്യമല്ല' : 'Results not available'}
+      </div>
+    );
+  }
+
+  // Basic checks to ensure we have the minimum required fields
+  if (!result.details) {
+    console.error('Image analysis result is missing details:', result);
+    return (
+      <div className="text-red-500 text-center p-4 bg-white dark:bg-gray-800 rounded-lg shadow-md">
+        {language === 'ml' ? 'അസാധുവായ ഫലങ്ങൾ' : 'Invalid results - missing details'}
+      </div>
+    );
+  }
+
+  // Extract details with fallback values to prevent errors
+  const {
+    ai_generated = false,
+    reverse_search = { found: false, matches: [] },
+    deepfake = false,
+    tampering_analysis = false,
+    image_caption = '',
+    text_analysis,
+    date_analysis
+  } = result.details;
+
   // Normalize the score to be between 0-100
   const confidencePercentage = Math.min(100, Math.max(0, Math.round(result.score)));
   const isReliable = result.verdict.toLowerCase() === 'real' || 
@@ -78,7 +108,7 @@ export const ImageResultCard: FC<ImageResultCardProps> = ({ result, imageUrl, ex
   };
 
   const renderWebMatches = () => {
-    const matches = result.details.reverse_search.matches || [];
+    const matches = reverse_search.matches || [];
     if (!matches.length) {
       return (
         <span className={clsx(
@@ -538,12 +568,12 @@ export const ImageResultCard: FC<ImageResultCardProps> = ({ result, imageUrl, ex
               "text-gray-600 dark:text-gray-300",
               isMalayalam && "text-lg leading-loose"
             )}>
-              {result.details.image_caption || (language === 'ml' ? 'വിവരണം ലഭ്യമല്ല' : 'No description available')}
+              {image_caption || (language === 'ml' ? 'വിവരണം ലഭ്യമല്ല' : 'No description available')}
             </p>
           </div>
 
           {/* Date Analysis Section */}
-          {result.details.date_analysis && (
+          {date_analysis && (
             <div className="mb-6 bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg backdrop-blur-sm">
               <h3 className={clsx(
                 "text-lg font-semibold mb-3 text-gray-800 dark:text-gray-100 flex items-center",
@@ -561,7 +591,7 @@ export const ImageResultCard: FC<ImageResultCardProps> = ({ result, imageUrl, ex
             {/* AI Generation */}
             <div className={clsx(
               "p-4 rounded-lg",
-              result.details.ai_generated
+              ai_generated
                 ? "bg-amber-50 dark:bg-amber-900/10 border border-amber-200" 
                 : "bg-green-50 dark:bg-green-900/10 border border-green-200"
             )}>
@@ -570,7 +600,7 @@ export const ImageResultCard: FC<ImageResultCardProps> = ({ result, imageUrl, ex
                 {language === 'ml' ? 'AI നിർമ്മിതം' : 'AI Generated'}
               </h4>
               <p className="flex items-center text-sm">
-                {result.details.ai_generated ? (
+                {ai_generated ? (
                   <>
                     <AlertTriangle className="w-4 h-4 mr-1.5 text-amber-500" />
                     <span className={clsx(
@@ -597,7 +627,7 @@ export const ImageResultCard: FC<ImageResultCardProps> = ({ result, imageUrl, ex
             {/* Deepfake */}
             <div className={clsx(
               "p-4 rounded-lg",
-              result.details.deepfake
+              deepfake
                 ? "bg-amber-50 dark:bg-amber-900/10 border border-amber-200" 
                 : "bg-green-50 dark:bg-green-900/10 border border-green-200"
             )}>
@@ -606,7 +636,7 @@ export const ImageResultCard: FC<ImageResultCardProps> = ({ result, imageUrl, ex
                 {language === 'ml' ? 'ഡീപ്‌ഫേക്ക്' : 'Deepfake'}
               </h4>
               <p className="flex items-center text-sm">
-                {result.details.deepfake ? (
+                {deepfake ? (
                   <>
                     <AlertTriangle className="w-4 h-4 mr-1.5 text-amber-500" />
                     <span className={clsx(
@@ -633,7 +663,7 @@ export const ImageResultCard: FC<ImageResultCardProps> = ({ result, imageUrl, ex
             {/* Tampering */}
             <div className={clsx(
               "p-4 rounded-lg",
-              result.details.tampering_analysis
+              tampering_analysis
                 ? "bg-amber-50 dark:bg-amber-900/10 border border-amber-200" 
                 : "bg-green-50 dark:bg-green-900/10 border border-green-200"
             )}>
@@ -642,7 +672,7 @@ export const ImageResultCard: FC<ImageResultCardProps> = ({ result, imageUrl, ex
                 {language === 'ml' ? 'കൃത്രിമ മാറ്റങ്ങൾ' : 'Image Tampering'}
               </h4>
               <p className="flex items-center text-sm">
-                {result.details.tampering_analysis ? (
+                {tampering_analysis ? (
                   <>
                     <AlertTriangle className="w-4 h-4 mr-1.5 text-amber-500" />
                     <span className={clsx(
@@ -669,7 +699,7 @@ export const ImageResultCard: FC<ImageResultCardProps> = ({ result, imageUrl, ex
             {/* Web Matches */}
             <div className={clsx(
               "p-4 rounded-lg",
-              result.details.reverse_search.found
+              reverse_search.found
                 ? "bg-amber-50 dark:bg-amber-900/10 border border-amber-200" 
                 : "bg-green-50 dark:bg-green-900/10 border border-green-200"
             )}>
@@ -682,7 +712,7 @@ export const ImageResultCard: FC<ImageResultCardProps> = ({ result, imageUrl, ex
           </div>
 
           {/* Text Analysis */}
-          {(result.details.text_analysis || (extractedText && extractedText.length > 10)) && (
+          {(text_analysis || (extractedText && extractedText.length > 10)) && (
             <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
               <h3 className={clsx(
                 "text-lg font-semibold mb-4 text-gray-800 dark:text-gray-100 flex items-center",
@@ -694,7 +724,7 @@ export const ImageResultCard: FC<ImageResultCardProps> = ({ result, imageUrl, ex
               {renderTextAnalysis()}
               
               {/* Text Reverse Search Results */}
-              {result.details.text_analysis?.reverse_search && (
+              {text_analysis?.reverse_search && (
                 <div className="mt-6">
                   <h4 className={clsx(
                     "font-medium mb-3 flex items-center",
