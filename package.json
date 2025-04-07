@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@mozilla/readability": "^0.6.0",
     "@supabase/supabase-js": "^2.48.1",
     "@tailwindcss/forms": "^0.5.7",
     "@types/papaparse": "^5.3.15",
@@ -40,6 +41,7 @@
     "@testing-library/react": "^16.2.0",
     "@testing-library/user-event": "^14.6.1",
     "@types/jest": "^29.5.14",
+    "@types/jsdom": "^21.1.7",
     "@types/react": "^18.2.56",
     "@types/react-dom": "^18.2.19",
     "@types/uuid": "^10.0.0",

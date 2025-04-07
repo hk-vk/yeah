@@ -232,7 +232,7 @@ export const ComprehensiveAnalysisCard: FC<ComprehensiveAnalysisCardProps> = ({
               ) : (
                 <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 mr-2 text-red-500 dark:text-red-400 flex-shrink-0" />
               )}
-              {language === 'ml' ? 'സമഗ്ര വിശകലന സംഗ്രഹം' : 'Comprehensive Analysis Summary'}
+              {language === 'ml' ? 'വിശകലന സംഗ്രഹം' : 'Analysis Summary'}
             </h3>
             <div className="space-y-3 sm:space-y-4">
               {textAnalysis && (
