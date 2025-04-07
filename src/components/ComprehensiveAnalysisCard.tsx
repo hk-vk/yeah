@@ -1,18 +1,32 @@
 import { FC } from 'react';
-import { motion } from 'framer-motion';
-import { ShieldCheck, ShieldAlert, AlertCircle, CheckCircle, BarChart2, Link, FileText, Image as ImageIcon } from 'lucide-react';
+import { motion } from 'framer-motion'
+import { ShieldCheck, ShieldAlert, AlertCircle, CheckCircle, BarChart2, Link, FileText, Image as ImageIcon, Share2, Copy } from 'lucide-react';
 import { TextAnalysisResult, ImageAnalysisResult } from '../types/analysis';
 import { useLanguage } from '../contexts/LanguageContext';
 import { translations } from '../locales/translations';
 import { GlassCard } from './common/GlassCard';
 import clsx from 'clsx';
 import React from 'react';
+import { toast } from 'react-hot-toast';
+import { analyzeService } from '../services/analyzeService';
 
 interface ComprehensiveAnalysisCardProps {
   textAnalysis?: TextAnalysisResult | null;
   imageAnalysis?: ImageAnalysisResult | null;
   urlAnalysis?: TextAnalysisResult['urlAnalysis'] | null;
   extractedTextFromImage?: string;
+}
+
+// Helper function to convert ArrayBuffer to URL-safe Base64
+function arrayBufferToBase64Url(buffer: ArrayBuffer): string {
+  let binary = '';
+  const bytes = new Uint8Array(buffer);
+  const len = bytes.byteLength;
+  for (let i = 0; i < len; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  const base64 = btoa(binary);
+  return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
 export const ComprehensiveAnalysisCard: FC<ComprehensiveAnalysisCardProps> = ({
@@ -144,6 +158,110 @@ export const ComprehensiveAnalysisCard: FC<ComprehensiveAnalysisCardProps> = ({
     );
   };
 
+  // Function to get the analysis ID from available props
+  const getAnalysisId = (): string | null => {
+      // Prioritize ID from the primary analysis type
+      if (textAnalysis?.id) return textAnalysis.id;
+      if (imageAnalysis?.id) return imageAnalysis.id;
+      // Check if urlAnalysis itself has an ID or if it's nested within textAnalysis
+      if (urlAnalysis?.id) return urlAnalysis.id; // Assuming urlAnalysis might have a top-level ID
+      return null;
+  };
+
+  const handleShare = async () => {
+    const analysisId = getAnalysisId(); // Get the Supabase ID
+
+    if (!analysisId) {
+      toast.error(
+        language === 'ml' ? 'പങ്കിടാൻ വിശകലന ഐഡി കണ്ടെത്താനായില്ല' : 'Could not find Analysis ID to share'
+      );
+      console.error("Error sharing: Analysis ID is missing from props", { textAnalysis, imageAnalysis, urlAnalysis });
+      return;
+    }
+
+    // *** Construct URL using the analysis ID ONLY ***
+    const shareableUrl = `${window.location.origin}/analysis/${analysisId}`; // Correct format
+    const shareTitle = language === 'ml' ? 'വിശകലന ഫലം' : 'Analysis Result';
+    const shareText = language === 'ml' ? 'ഈ വിശകലന ഫലം പരിശോധിക്കുക' : 'Check out this analysis result';
+
+    console.log("Attempting to share URL:", shareableUrl); // Add log
+
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: shareTitle,
+          text: shareText,
+          url: shareableUrl // Use the ID-based URL
+        });
+        console.log('Shared successfully via Web Share API');
+      } else {
+        // Fallback: Copy the ID-based URL
+        await navigator.clipboard.writeText(shareableUrl);
+        toast.success(
+          language === 'ml' ? 'ലിങ്ക് പകർത്തി' : 'Link copied to clipboard',
+          {
+            icon: '🔗',
+            style: {
+              borderRadius: '10px',
+              background: '#333',
+              color: '#fff',
+            },
+          }
+        );
+        console.log('Share link copied to clipboard:', shareableUrl);
+      }
+    } catch (err) {
+      if (err instanceof Error && err.name !== 'AbortError') {
+        console.error('Error sharing analysis:', err);
+        toast.error(
+          language === 'ml' ? 'പങ്കിടൽ പരാജയപ്പെട്ടു' : 'Failed to share analysis',
+          {
+            icon: '❌',
+            style: {
+              borderRadius: '10px',
+              background: '#333',
+              color: '#fff',
+            },
+          }
+        );
+      } else {
+         console.log('Share action cancelled by user or unsupported.');
+      }
+    }
+  };
+
+  const handleCopy = async () => {
+    try {
+      // Get the main explanation based on the analysis type
+      let explanation = '';
+      
+      if (textAnalysis) {
+        explanation = language === 'ml' ? textAnalysis.EXPLANATION_ML : textAnalysis.EXPLANATION_EN;
+      } else if (imageAnalysis) {
+        explanation = language === 'ml'
+          ? `ചിത്രം ${imageAnalysis.verdict.toLowerCase().includes('fake') ? 'വ്യാജമാണ്' : 'യഥാർത്ഥമാണ്'}. ${
+              imageAnalysis.details.ai_generated ? 'AI ഉപയോഗിച്ച് നിർമ്മിച്ചതാണ്. ' : ''
+            }${imageAnalysis.details.deepfake ? 'ഡീപ്ഫേക്ക് സാങ്കേതികവിദ്യ ഉപയോഗിച്ചിട്ടുണ്ട്. ' : ''}`
+          : `The image appears to be ${imageAnalysis.verdict}. ${
+              imageAnalysis.details.ai_generated ? 'It was generated using AI. ' : ''
+            }${imageAnalysis.details.deepfake ? 'Deepfake technology was detected. ' : ''}`;
+      } else if (urlAnalysis) {
+        explanation = language === 'ml'
+          ? `URL ${urlAnalysis.is_trustworthy ? 'വിശ്വസനീയമാണ്' : 'വിശ്വസനീയമല്ല'}. ${
+              urlAnalysis.trust_reasons.join('. ')
+            }`
+          : `The URL is ${urlAnalysis.is_trustworthy ? 'trustworthy' : 'not trustworthy'}. ${
+              urlAnalysis.trust_reasons.join('. ')
+            }`;
+      }
+
+      await navigator.clipboard.writeText(explanation);
+      toast.success(language === 'ml' ? 'വിശകലനം പകർത്തി' : 'Analysis copied to clipboard');
+    } catch (error) {
+      console.error('Error copying:', error);
+    }
+  };
+
   if (overallResult === null) {
     return null;
   }
@@ -154,7 +272,29 @@ export const ComprehensiveAnalysisCard: FC<ComprehensiveAnalysisCardProps> = ({
       animate={{ opacity: 1, scale: 1 }}
       className="w-full max-w-4xl mx-auto relative space-y-4"
     >
-      <div className="absolute top-4 right-4 z-10">
+      <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
+        <button
+          onClick={handleCopy}
+          className={clsx(
+            "p-1.5 rounded-full transition-colors",
+            "text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200",
+            "hover:bg-gray-100 dark:hover:bg-gray-800/50"
+          )}
+          title={language === 'ml' ? 'വിശകലനം പകർത്തുക' : 'Copy analysis'}
+        >
+          <Copy className="w-4 h-4" />
+        </button>
+        <button
+          onClick={handleShare}
+          className={clsx(
+            "p-1.5 rounded-full transition-colors",
+            "text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200",
+            "hover:bg-gray-100 dark:hover:bg-gray-800/50"
+          )}
+          title={language === 'ml' ? 'പങ്കിടുക' : 'Share'}
+        >
+          <Share2 className="w-4 h-4" />
+        </button>
         <span className={clsx(
           "px-3 py-1 rounded-full text-sm font-medium",
           "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-200",

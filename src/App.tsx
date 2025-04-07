@@ -8,6 +8,7 @@ import HomePage from './pages/HomePage';
 import AnalyzePage from './pages/AnalyzePage';
 import AdminPage from './pages/AdminPage';
 import { TrendingPage } from './pages/TrendingPage';
+import { SharedAnalysisView } from './components/SharedAnalysisView';
 
 export default function App() {
   return (
@@ -26,6 +27,7 @@ export default function App() {
                   <Route path="/analyze" element={<AnalyzePage />} />
                   <Route path="/admin" element={<AdminPage />} />
                   <Route path="/trending" element={<TrendingPage />} />
+                  <Route path="/analysis/:id" element={<SharedAnalysisView />} />
                 </Routes>
               </Layout>
             </AuthProvider>

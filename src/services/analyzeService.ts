@@ -5,6 +5,7 @@ import { SupabaseService } from './supabaseService';
 import type { AnalysisType } from '../types/supabase';
 import { exaService } from './exaService';
 import { createClient } from '@supabase/supabase-js';
+import { supabase } from '../lib/supabase'; // Corrected import path
 
 // Create a persistent connection manager
 class ConnectionManager {
@@ -519,6 +520,117 @@ export const analyzeService = {
                 writingStyle: 50,
                 clickbait: 50
             };
+        }
+    },
+
+    async saveAnalysisForSharing(analysisData: {
+        textAnalysis: TextAnalysisResult | null;
+        imageAnalysis: ImageAnalysisResult | null;
+        urlAnalysis: any | null;
+    }): Promise<string> {
+        try {
+            const response = await fetch(`${API_CONFIG.BASE_URL}/analysis/share`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(analysisData),
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to save analysis for sharing');
+            }
+
+            const data = await response.json();
+            return data.analysisId;
+        } catch (error) {
+            console.error('Error saving analysis for sharing:', error);
+            throw error;
+        }
+    },
+
+    // Updated function to fetch analysis directly from Supabase by ID
+    async getSharedAnalysis(analysisId: string): Promise<{
+        textAnalysis: TextAnalysisResult | null;
+        imageAnalysis: ImageAnalysisResult | null;
+        urlAnalysis: any | null;
+        input: any | null;
+    } | null> {
+        if (!analysisId) {
+            console.error('getSharedAnalysis called with invalid ID');
+            return null;
+        }
+        console.log(`Fetching analysis from Supabase table 'analysis_result' with ID: ${analysisId}`);
+        try {
+            // Fetch the 'result' and 'type' columns from the 'analysis_result' table
+            const { data, error } = await supabase
+                .from('analysis_result') // Correct table name from migration
+                .select('result, type, input')    // Fetch the result object, the type, and the input
+                .eq('id', analysisId)     // Filter by the provided ID
+                .single();               // Expect only one row for a unique ID
+
+            if (error) {
+                // Handle specific errors like row not found (PGRST116)
+                // Or RLS policy violation (42501 permission denied)
+                if (error.code === 'PGRST116') {
+                    console.warn(`Analysis not found in Supabase for ID: ${analysisId}`);
+                    return null; // Analysis doesn't exist
+                } else if (error.code === '42501') {
+                     console.warn(`RLS Permission Denied fetching analysis ID: ${analysisId}. RLS policy needs adjustment for sharing.`);
+                     // Return null or throw a specific error indicating permission issue
+                     return null;
+                }
+                console.error('Error fetching shared analysis from Supabase:', error);
+                throw new Error(`Failed to fetch shared analysis: ${error.message}`);
+            }
+
+            if (!data || !data.result || !data.type) {
+                 console.warn(`No data or missing result/type returned from Supabase for ID: ${analysisId}`, data);
+                 return null;
+            }
+
+            console.log('Successfully fetched data from Supabase:', data);
+
+            // Construct the result based on the 'type' column
+            const analysisResult = data.result;
+            const analysisType = data.type as AnalysisType;
+            const analysisInput = data.input;
+
+            let formattedResult: {
+                textAnalysis: TextAnalysisResult | null;
+                imageAnalysis: ImageAnalysisResult | null;
+                urlAnalysis: any | null;
+                input: any | null;
+            } = {
+                textAnalysis: null,
+                imageAnalysis: null,
+                urlAnalysis: null,
+                input: analysisInput
+            };
+
+            if (analysisType === 'text' || analysisType === 'url') {
+                formattedResult.textAnalysis = analysisResult as TextAnalysisResult;
+                // Extract nested urlAnalysis if it exists within text/url results
+                formattedResult.urlAnalysis = analysisResult.urlAnalysis || null;
+            } else if (analysisType === 'image' || analysisType === 'text_image') {
+                 formattedResult.imageAnalysis = analysisResult as ImageAnalysisResult;
+                 // Image results might also contain text analysis parts in some schemas
+                 // If resultData also contains textAnalysis info, populate output.textAnalysis here too.
+                 // Example: output.textAnalysis = resultData.textAnalysis || null;
+            }
+
+            return formattedResult;
+
+        } catch (error) {
+            if (error instanceof Error) {
+                 console.error('Caught error in getSharedAnalysis:', error.message);
+                 // Avoid throwing generic error if it was handled (like RLS denial leading to null)
+                 if (error.message.includes('Failed to fetch')) throw error;
+                 return null; // Return null for other caught errors during fetch/processing
+            } else {
+                 console.error('Caught unknown error in getSharedAnalysis:', error);
+                 throw new Error('An unknown error occurred while fetching shared analysis.');
+            }
         }
     },
 };

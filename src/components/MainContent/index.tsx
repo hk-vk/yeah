@@ -383,6 +383,8 @@ export function MainContent() {
                         textAnalysis={textResult} 
                         imageAnalysis={textResult.type === 'url' ? textResult.imageAnalysis : null}
                         urlAnalysis={textResult.type === 'url' ? textResult.urlAnalysis : null}
+                        originalContent={currentContent}
+                        onFeedback={handleFeedback}
                       />
                     </motion.div>
                   )}
@@ -420,6 +422,9 @@ export function MainContent() {
                       <ImageResultCard 
                         result={textResult?.type === 'url' ? textResult.imageAnalysis : imageResult} 
                         imageUrl={currentImageContent}
+                        originalImage={currentImageContent}
+                        extractedText={extractedText}
+                        onFeedback={handleFeedback}
                       />
                     </motion.div>
                   )}
