@@ -98,14 +98,12 @@ export default function HomePage() {
             className="transform-gpu"
             style={{ willChange: 'transform' }}
           >
-            <StarBorder 
-              as={Link}
+            <Link
               to="/analyze"
-              color="#2563eb"
-              className="border-none"
+              className="inline-flex items-center justify-center px-6 py-3 rounded-lg text-base font-medium text-white bg-blue-600 hover:bg-blue-700 shadow-sm hover:shadow-md transition-all duration-200"
             >
               {t.getStarted}
-            </StarBorder>
+            </Link>
           </motion.div>
         </motion.div>
       </motion.section>

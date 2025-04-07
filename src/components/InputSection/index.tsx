@@ -290,11 +290,7 @@ export function InputSection({ onAnalyze, isAnalyzing = false }: Props) {
               className={clsx(
                 "flex items-center gap-2 font-medium transition-all shadow-md relative overflow-hidden transform-gpu",
                 "group",
-                isUrl ? (
-                  "bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600"
-                ) : (
-                  "bg-blue-600 hover:bg-blue-700"
-                ),
+                "bg-blue-600 hover:bg-blue-700",
                 "text-white border border-transparent",
                 "dark:border-blue-700/50",
                 "disabled:opacity-50 disabled:cursor-not-allowed",

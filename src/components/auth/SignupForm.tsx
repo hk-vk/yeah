@@ -405,8 +405,8 @@ export function SignupForm({ onClose }: SignupFormProps) {
               />
             </div>
             
-            {/* Password requirements */}
-            <div className="mt-2 space-y-1">
+            {/* Password requirements - Hide detailed list on small screens */}
+            <div className="mt-2 space-y-1 hidden sm:block">
               <div className="flex items-center text-xs">
                 {passwordStrength.hasMinLength ? (
                   <Check className="h-3.5 w-3.5 text-green-500 mr-1.5" />
