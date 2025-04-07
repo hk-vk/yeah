@@ -422,7 +422,6 @@ export function MainContent() {
                       <ImageResultCard 
                         result={textResult?.type === 'url' ? textResult.imageAnalysis : imageResult} 
                         imageUrl={currentImageContent}
-                        originalImage={currentImageContent}
                         extractedText={extractedText}
                         onFeedback={handleFeedback}
                       />

@@ -151,19 +151,25 @@ export const analyzeService = {
         text?: string,
         userId?: string
     ): Promise<ImageAnalysisResult> {
+        let savedAnalysisId: string | null = null; // To store the final ID if saving succeeds
         try {
-            // Convert data URL to blob if needed
-            let imageBlob;
+            console.log('Starting image analysis with:', { imageUrl, hasText: !!text });
+            
+            let imageBlob: Blob | undefined; // Explicitly type imageBlob
+            let formData = new FormData();
+            
             if (imageUrl.startsWith('data:')) {
                 imageBlob = dataURLtoBlob(imageUrl);
+                formData.append('image', imageBlob);
+            } else if (imageUrl.startsWith('http')) {
+                formData.append('url', imageUrl);
             }
 
-            const formData = new FormData();
-            formData.append('image', imageBlob || imageUrl);
             if (text) {
                 formData.append('text', text);
             }
 
+            console.log('Sending request to image analysis endpoint');
             const response = await fetch('https://settling-presently-giraffe.ngrok-free.app/analyze', {
                 method: 'POST',
                 body: formData,
@@ -175,51 +181,92 @@ export const analyzeService = {
             }
 
             const result = await response.json();
+            console.log('Image analysis result:', result);
 
-            // Save analysis to Supabase and wait for it to complete
-            try {
-                const savedAnalysis = await saveAnalysisToSupabase(
-                    text ? 'text_image' : 'image',
-                    {
-                        text: text,
-                    },
-                    result,
-                    userId
-                );
-
-                // Store the image in Supabase
-                if (imageBlob) {
-                    // For uploaded images (data URLs)
-                    await imageService.uploadImage(
-                        imageBlob,
-                        savedAnalysis.id,
-                        'uploaded'
-                    );
-                } else if (imageUrl.startsWith('http')) {
-                    // For URL-based images
-                    await imageService.storeImageUrl(
-                        imageUrl,
-                        savedAnalysis.id,
-                        'url'
-                    );
+            // --- Immediate Return --- 
+            // Create the result object to return immediately to the UI
+            const immediateResult: ImageAnalysisResult = {
+                ...result,
+                id: `local-${Date.now()}`, // Use a temporary local ID
+                type: text ? 'text_image' : 'image',
+                input: {
+                    text,
+                    images: [{
+                        url: imageUrl,
+                        type: imageUrl.startsWith('data:') ? 'uploaded' : 'url'
+                    }]
                 }
+            };
 
-                return {
-                    ...result,
-                    id: savedAnalysis.id,
-                    type: text ? 'text_image' : 'image'
-                };
-            } catch (error) {
-                console.error('Error saving image analysis:', error);
-                return {
-                    ...result,
-                    id: `local-${Date.now()}`,
-                    type: text ? 'text_image' : 'image'
-                };
-            }
+            // --- Background Saving --- 
+            // Define an async function to handle saving in the background
+            const saveInBackground = async () => {
+                try {
+                    console.log('Attempting to save analysis to Supabase in background...');
+                    const savedAnalysis = await saveAnalysisToSupabase(
+                        text ? 'text_image' : 'image',
+                        {
+                            text: text,
+                            images: [{
+                                url: imageUrl,
+                                type: imageUrl.startsWith('data:') ? 'uploaded' : 'url'
+                            }]
+                        },
+                        result, // Pass the original backend result
+                        userId
+                    );
+                    savedAnalysisId = savedAnalysis.id; // Store the final ID
+                    console.log('Successfully saved analysis to Supabase. ID:', savedAnalysisId);
+
+                    // Store the image in Supabase
+                    console.log('Attempting to store image in background...');
+                    if (imageBlob) { // Check if imageBlob is defined
+                        await imageService.uploadImage(
+                            imageBlob,
+                            savedAnalysis.id,
+                            'uploaded'
+                        );
+                    } else if (imageUrl.startsWith('http')) {
+                        await imageService.storeImageUrl(
+                            imageUrl,
+                            savedAnalysis.id,
+                            'url'
+                        );
+                    }
+                    console.log('Successfully stored image.');
+
+                } catch (saveError) {
+                    console.error('Error saving image analysis/storage in background:', saveError);
+                    // Handle error appropriately, maybe update UI state if needed
+                }
+            };
+
+            // Trigger the background saving process but don't wait for it
+            saveInBackground(); 
+
+            // Return the immediate result to the UI
+            return immediateResult;
+            // --- End of Modifications ---
+
         } catch (error) {
             console.error('Error during image analysis:', error);
-            throw error;
+            // Still return a mock/error result immediately if the fetch itself fails
+            return {
+                // Provide a default/error structure matching ImageAnalysisResult
+                verdict: 'Error',
+                score: 0,
+                details: { ai_generated: false, reverse_search: { found: false }, deepfake: false, tampering_analysis: false, image_caption: '' },
+                id: `error-${Date.now()}`,
+                type: text ? 'text_image' : 'image',
+                input: {
+                    text,
+                    images: [{
+                        url: imageUrl,
+                        type: imageUrl.startsWith('data:') ? 'uploaded' : 'url'
+                    }]
+                },
+                error: error instanceof Error ? error.message : 'Unknown analysis error'
+            };
         }
     },
 
@@ -248,62 +295,15 @@ export const analyzeService = {
                 }
             } catch (urlAnalysisError) {
                 console.error('Error fetching URL analysis data:', urlAnalysisError);
-                // Continue with content extraction even if URL analysis fails
             }
-            
-            // Use exaService to extract URL content
-            const extractedContent = await exaService.extractUrlContent(url);
-            
-            // If we have an image from the extracted content, analyze it
-            let imageAnalysisResult = null;
-            if (extractedContent.image) {
-                try {
-                    console.log('Sending extracted image to ngrok API for analysis:', extractedContent.image);
-                    
-                    // Create a FormData object for the image analysis request
-                    const formData = new FormData();
-                    
-                    // Handle image URL
-                    if (extractedContent.image.startsWith('http')) {
-                        formData.append('url', extractedContent.image);
-                    } else {
-                        // Convert base64/blob to file if needed
-                        const response = await fetch(extractedContent.image);
-                        const blob = await response.blob();
-                        const file = new File([blob], 'image.jpg', { type: 'image/jpeg' });
-                        formData.append('image', file);
-                    }
 
-                    // Add text if available
-                    if (extractedContent.text && extractedContent.title) {
-                        formData.append('text', extractedContent.title);
-                    }
-                    
-                    // Send request to analysis endpoint
-                    const imageAnalysisResponse = await fetch('https://settling-presently-giraffe.ngrok-free.app/analyze', {
-                        method: 'POST',
-                        body: formData,
-                        mode: 'cors',
-                    });
-                    
-                    if (imageAnalysisResponse.ok) {
-                        imageAnalysisResult = await imageAnalysisResponse.json();
-                        console.log('Image analysis result:', imageAnalysisResult);
-                    }
-                } catch (imageAnalysisError) {
-                    console.error('Error analyzing extracted image:', imageAnalysisError);
-                }
-            }
-            
-            // Send the extracted text to the reverse-search API for text analysis
-            let textAnalysisResult: Partial<TextAnalysisResult> = {}; // Properly type as partial TextAnalysisResult
+            // Extract content using Exa
+            const extractedContent = await exaService.extractUrlContent(url);
+            console.log('Extracted content:', extractedContent);
+
+            // Analyze the extracted text
+            let textAnalysisResult = null;
             try {
-                console.log('Sending extracted text to reverse-search API');
-                
-                // Extract timestamp from the URL content if available
-                const publishedDate = extractedContent.publishedDate || new Date().toISOString();
-                
-                // Only send the extracted text and timestamp to the API
                 const response = await connectionManager.fetch(
                     `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.REVERSE_SEARCH}`,
                     {
@@ -313,7 +313,7 @@ export const analyzeService = {
                         },
                         body: JSON.stringify({ 
                             content: extractedContent.text,
-                            timestamp: publishedDate
+                            timestamp: extractedContent.publishedDate
                         }),
                     }
                 );
@@ -324,74 +324,58 @@ export const analyzeService = {
                 }
             } catch (textAnalysisError) {
                 console.error('Error analyzing extracted text:', textAnalysisError);
-                // Continue with URL analysis even if text analysis fails
             }
-            
-            // Create a result structure combining URL metadata and text analysis
-            // Ensure we're using the ISFAKE, CONFIDENCE, and other scores from the API response
-            const result = {
-                // Extract specific fields from textAnalysisResult
-                CONFIDENCE: textAnalysisResult.CONFIDENCE !== undefined ? textAnalysisResult.CONFIDENCE : 0.85,
-                EXPLANATION_EN: textAnalysisResult.EXPLANATION_EN || 
-                    `Content analyzed from ${url}. The extracted content appears to be ${extractedContent.text.length > 200 ? 'comprehensive' : 'limited'}.`,
-                EXPLANATION_ML: textAnalysisResult.EXPLANATION_ML || 
-                    `${url} നു വിശകലനം ചെയ്ത ഉള്ളടക്കം. എക്സ്ട്രാക്ട് ചെയ്ത ഉള്ളടക്കം ${extractedContent.text.length > 200 ? 'വിശദമാണ്' : 'പരിമിതമാണ്'}.`,
-                ISFAKE: textAnalysisResult.ISFAKE !== undefined ? textAnalysisResult.ISFAKE : 0,
-                // Include any other fields from textAnalysisResult
-                ...textAnalysisResult,
-                // Add URL metadata
-                input: {
-                    url,
-                    title: extractedContent.title,
-                    published_date: extractedContent.publishedDate,
-                    image_url: extractedContent.image
-                },
-                content: extractedContent.text,
-                image: extractedContent.image,
-                // Add URL analysis data if available
-                urlAnalysis: urlAnalysisData,
-                // Add image analysis if available
-                imageAnalysis: imageAnalysisResult
-            };
 
-            // Save analysis to Supabase
+            // Save URL analysis to Supabase
+            let savedAnalysis;
             try {
-                const savedAnalysis = await saveAnalysisToSupabase(
+                savedAnalysis = await saveAnalysisToSupabase(
                     'url',
-                    {
+                    { 
                         url,
                         title: extractedContent.title,
                         published_date: extractedContent.publishedDate
                     },
-                    {
-                        ...result,
-                        imageAnalysis: imageAnalysisResult
+                    { 
+                        ...textAnalysisResult,
+                        urlAnalysis: urlAnalysisData,
+                        content: extractedContent.text,
+                        image: extractedContent.image
                     },
                     userId
                 );
-
-                // Store the extracted image if available
-                if (extractedContent.image) {
-                    await imageService.storeImageUrl(
-                        extractedContent.image,
-                        savedAnalysis.id,
-                        'extracted'
-                    );
-                }
-
-                return {
-                    ...result,
-                    id: savedAnalysis.id,
-                    type: 'url'
-                };
             } catch (error) {
                 console.error('Error saving URL analysis:', error);
-                return {
-                    ...result,
-                    id: `local-${Date.now()}`,
-                    type: 'url'
-                };
+                savedAnalysis = { id: `local-${Date.now()}` };
             }
+
+            // Handle image storage if images are present
+            if (urlAnalysisData?.images?.length > 0) {
+                try {
+                    // Store each image from the URL analysis
+                    for (const image of urlAnalysisData.images) {
+                        if (image.url) {
+                            await imageService.storeImageUrl(
+                                image.url,
+                                savedAnalysis.id,
+                                'extracted'
+                            );
+                        }
+                    }
+                } catch (imageError) {
+                    console.error('Error storing URL images:', imageError);
+                    // Continue with the analysis even if image storage fails
+                }
+            }
+
+            return {
+                ...textAnalysisResult,
+                id: savedAnalysis.id,
+                type: 'url',
+                urlAnalysis: urlAnalysisData,
+                content: extractedContent.text,
+                image: extractedContent.image
+            };
         } catch (error) {
             console.error('Error during URL analysis:', error);
             throw error;

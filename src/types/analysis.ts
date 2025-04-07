@@ -52,6 +52,11 @@ export interface ImageAnalysisResult extends BaseAnalysisResult {
       context_mismatch: boolean;
     };
   };
+  input?: {
+    text?: string;
+    images?: { url: string; type: 'uploaded' | 'url' }[];
+  };
+  error?: string;
 }
 
 export type AnalysisResult = TextAnalysisResult | ImageAnalysisResult;
