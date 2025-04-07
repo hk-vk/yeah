@@ -6,6 +6,7 @@ import type { AnalysisType } from '../types/supabase';
 import { exaService } from './exaService';
 import { createClient } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase'; // Corrected import path
+import { imageService } from './imageService';
 
 // Create a persistent connection manager
 class ConnectionManager {
@@ -180,12 +181,29 @@ export const analyzeService = {
                 const savedAnalysis = await saveAnalysisToSupabase(
                     text ? 'text_image' : 'image',
                     {
-                        image_url: 'image_processed', // Don't store the actual data URL
                         text: text,
                     },
                     result,
                     userId
                 );
+
+                // Store the image in Supabase
+                if (imageBlob) {
+                    // For uploaded images (data URLs)
+                    await imageService.uploadImage(
+                        imageBlob,
+                        savedAnalysis.id,
+                        'uploaded'
+                    );
+                } else if (imageUrl.startsWith('http')) {
+                    // For URL-based images
+                    await imageService.storeImageUrl(
+                        imageUrl,
+                        savedAnalysis.id,
+                        'url'
+                    );
+                }
+
                 return {
                     ...result,
                     id: savedAnalysis.id,
@@ -336,7 +354,7 @@ export const analyzeService = {
                 imageAnalysis: imageAnalysisResult
             };
 
-            // Save analysis to Supabase and wait for it to complete
+            // Save analysis to Supabase
             try {
                 const savedAnalysis = await saveAnalysisToSupabase(
                     'url',
@@ -345,44 +363,38 @@ export const analyzeService = {
                         title: extractedContent.title,
                         published_date: extractedContent.publishedDate
                     },
-                    result,
+                    {
+                        ...result,
+                        imageAnalysis: imageAnalysisResult
+                    },
                     userId
                 );
+
+                // Store the extracted image if available
+                if (extractedContent.image) {
+                    await imageService.storeImageUrl(
+                        extractedContent.image,
+                        savedAnalysis.id,
+                        'extracted'
+                    );
+                }
+
                 return {
                     ...result,
                     id: savedAnalysis.id,
                     type: 'url'
                 };
-            } catch (error: unknown) {
-                console.error('Error saving URL analysis:', error instanceof Error ? error.message : String(error));
+            } catch (error) {
+                console.error('Error saving URL analysis:', error);
                 return {
                     ...result,
                     id: `local-${Date.now()}`,
                     type: 'url'
                 };
             }
-        } catch (error: unknown) {
+        } catch (error) {
             console.error('Error during URL analysis:', error);
-            
-            // Return a mock result if backend is unavailable
-            const errorMessage = error instanceof Error ? error.message : String(error);
-            const mockResult = {
-                CONFIDENCE: 0.5,
-                EXPLANATION_EN: `Invalid URL or URL cannot be accessed. Please check if the URL is correct and accessible. Error: ${errorMessage}`,
-                EXPLANATION_ML: `അസാധുവായ URL അല്ലെങ്കിൽ URL ആക്സസ് ചെയ്യാൻ കഴിയില്ല. URL ശരിയാണോ ആക്സസ് ചെയ്യാൻ കഴിയുമോ എന്ന് പരിശോധിക്കുക. പിശക്: ${errorMessage}`,
-                ISFAKE: 1,
-                input: { url },
-                error: {
-                    type: 'URL_ERROR',
-                    message: errorMessage
-                }
-            };
-            
-            return {
-                ...mockResult,
-                id: `local-${Date.now()}`,
-                type: 'url'
-            };
+            throw error;
         }
     },
 
@@ -557,51 +569,41 @@ export const analyzeService = {
         input: any | null;
     } | null> {
         if (!analysisId) {
-            console.error('getSharedAnalysis called with invalid ID');
+            console.error('getSharedAnalysis: No analysis ID provided');
             return null;
         }
-        console.log(`Fetching analysis from Supabase table 'analysis_result' with ID: ${analysisId}`);
+
         try {
-            // Fetch the 'result' and 'type' columns from the 'analysis_result' table
+            // Fetch analysis data
             const { data, error } = await supabase
-                .from('analysis_result') // Correct table name from migration
-                .select('result, type, input')    // Fetch the result object, the type, and the input
-                .eq('id', analysisId)     // Filter by the provided ID
-                .single();               // Expect only one row for a unique ID
+                .from('analysis_result')
+                .select('result, type, input')
+                .eq('id', analysisId)
+                .single();
 
             if (error) {
-                // Handle specific errors like row not found (PGRST116)
-                // Or RLS policy violation (42501 permission denied)
-                if (error.code === 'PGRST116') {
-                    console.warn(`Analysis not found in Supabase for ID: ${analysisId}`);
-                    return null; // Analysis doesn't exist
-                } else if (error.code === '42501') {
-                     console.warn(`RLS Permission Denied fetching analysis ID: ${analysisId}. RLS policy needs adjustment for sharing.`);
-                     // Return null or throw a specific error indicating permission issue
-                     return null;
-                }
-                console.error('Error fetching shared analysis from Supabase:', error);
-                throw new Error(`Failed to fetch shared analysis: ${error.message}`);
+                throw error;
             }
 
             if (!data || !data.result || !data.type) {
-                 console.warn(`No data or missing result/type returned from Supabase for ID: ${analysisId}`, data);
-                 return null;
+                return null;
             }
 
-            console.log('Successfully fetched data from Supabase:', data);
-
-            // Construct the result based on the 'type' column
+            // Fetch associated images
+            const images = await imageService.getAnalysisImages(analysisId);
+            
+            // Format the result
             const analysisResult = data.result;
             const analysisType = data.type as AnalysisType;
-            const analysisInput = data.input;
+            const analysisInput = {
+                ...data.input,
+                images: images.map(img => ({
+                    url: img.original_url || imageService.getImageUrl(img.storage_path),
+                    type: img.image_type
+                }))
+            };
 
-            let formattedResult: {
-                textAnalysis: TextAnalysisResult | null;
-                imageAnalysis: ImageAnalysisResult | null;
-                urlAnalysis: any | null;
-                input: any | null;
-            } = {
+            let formattedResult = {
                 textAnalysis: null,
                 imageAnalysis: null,
                 urlAnalysis: null,
@@ -609,28 +611,24 @@ export const analyzeService = {
             };
 
             if (analysisType === 'text' || analysisType === 'url') {
-                formattedResult.textAnalysis = analysisResult as TextAnalysisResult;
-                // Extract nested urlAnalysis if it exists within text/url results
+                formattedResult.textAnalysis = {
+                    ...analysisResult,
+                    id: analysisId,
+                    type: analysisType
+                };
                 formattedResult.urlAnalysis = analysisResult.urlAnalysis || null;
             } else if (analysisType === 'image' || analysisType === 'text_image') {
-                 formattedResult.imageAnalysis = analysisResult as ImageAnalysisResult;
-                 // Image results might also contain text analysis parts in some schemas
-                 // If resultData also contains textAnalysis info, populate output.textAnalysis here too.
-                 // Example: output.textAnalysis = resultData.textAnalysis || null;
+                formattedResult.imageAnalysis = {
+                    ...analysisResult,
+                    id: analysisId,
+                    type: analysisType
+                };
             }
 
             return formattedResult;
-
         } catch (error) {
-            if (error instanceof Error) {
-                 console.error('Caught error in getSharedAnalysis:', error.message);
-                 // Avoid throwing generic error if it was handled (like RLS denial leading to null)
-                 if (error.message.includes('Failed to fetch')) throw error;
-                 return null; // Return null for other caught errors during fetch/processing
-            } else {
-                 console.error('Caught unknown error in getSharedAnalysis:', error);
-                 throw new Error('An unknown error occurred while fetching shared analysis.');
-            }
+            console.error('Error in getSharedAnalysis:', error);
+            return null;
         }
     },
 };
