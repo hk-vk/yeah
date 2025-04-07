@@ -73,6 +73,38 @@ export const SharedAnalysisView: FC<SharedAnalysisViewProps> = () => {
     fetchAnalysis();
   }, [id]);
 
+  const getMaxResultIndex = () => {
+    let availableResults = [];
+    
+    if (analysis?.textAnalysis) {
+      availableResults.push('text');
+    }
+    if (analysis?.urlAnalysis) {
+      availableResults.push('url');
+    }
+    if (analysis?.imageAnalysis) {
+      availableResults.push('image');
+    }
+    
+    return Math.max(0, availableResults.length - 1);
+  };
+
+  const getCurrentResultType = (index: number) => {
+    const availableResults = [];
+    
+    if (analysis?.textAnalysis) {
+      availableResults.push('text');
+    }
+    if (analysis?.urlAnalysis) {
+      availableResults.push('url');
+    }
+    if (analysis?.imageAnalysis) {
+      availableResults.push('image');
+    }
+    
+    return availableResults[index] || 'text';
+  };
+
   // Navigation functions
   const navigateResults = (direction: 'prev' | 'next') => {
     const maxIndex = getMaxResultIndex();
@@ -81,14 +113,6 @@ export const SharedAnalysisView: FC<SharedAnalysisViewProps> = () => {
     } else {
       setActiveResultIndex(prev => (prev - 1 + maxIndex + 1) % (maxIndex + 1));
     }
-  };
-
-  const getMaxResultIndex = () => {
-    let maxIndex = 0;
-    if (analysis?.textAnalysis) maxIndex = 0;
-    if (analysis?.urlAnalysis) maxIndex = 1;
-    if (analysis?.imageAnalysis) maxIndex = analysis.textAnalysis?.type === 'url' ? 2 : 1;
-    return maxIndex;
   };
 
   const renderInput = () => {
@@ -180,9 +204,6 @@ export const SharedAnalysisView: FC<SharedAnalysisViewProps> = () => {
     );
   }
 
-  const maxIndex = getMaxResultIndex();
-  const showNavigation = maxIndex > 0;
-
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -202,14 +223,14 @@ export const SharedAnalysisView: FC<SharedAnalysisViewProps> = () => {
       <div className="relative">
         <AnimatePresence mode="wait" custom={activeResultIndex}>
           {/* Text Analysis */}
-          {analysis.textAnalysis && activeResultIndex === 0 && (
+          {analysis.textAnalysis && getCurrentResultType(activeResultIndex) === 'text' && (
             <motion.div
               key="text"
               variants={cardVariants}
               initial="enter"
               animate="center"
               exit="exit"
-              custom={0}
+              custom={activeResultIndex}
               className="w-full"
             >
               <ComprehensiveAnalysisCard
@@ -221,14 +242,14 @@ export const SharedAnalysisView: FC<SharedAnalysisViewProps> = () => {
           )}
 
           {/* URL Analysis */}
-          {analysis.urlAnalysis && activeResultIndex === 1 && (
+          {analysis.urlAnalysis && getCurrentResultType(activeResultIndex) === 'url' && (
             <motion.div
               key="url"
               variants={cardVariants}
               initial="enter"
               animate="center"
               exit="exit"
-              custom={1}
+              custom={activeResultIndex}
               className="w-full"
             >
               <UrlAnalysisCard urlAnalysis={analysis.urlAnalysis} />
@@ -236,14 +257,14 @@ export const SharedAnalysisView: FC<SharedAnalysisViewProps> = () => {
           )}
 
           {/* Image Analysis */}
-          {analysis.imageAnalysis && activeResultIndex === (analysis.textAnalysis?.type === 'url' ? 2 : 1) && (
+          {analysis.imageAnalysis && getCurrentResultType(activeResultIndex) === 'image' && (
             <motion.div
               key="image"
               variants={cardVariants}
               initial="enter"
               animate="center"
               exit="exit"
-              custom={2}
+              custom={activeResultIndex}
               className="w-full"
             >
               <ImageResultCard
@@ -256,7 +277,7 @@ export const SharedAnalysisView: FC<SharedAnalysisViewProps> = () => {
         </AnimatePresence>
 
         {/* Navigation Controls */}
-        {showNavigation && (
+        {getMaxResultIndex() > 0 && (
           <div className="flex justify-between items-center mt-6">
             <button
               onClick={() => navigateResults('prev')}
@@ -270,7 +291,7 @@ export const SharedAnalysisView: FC<SharedAnalysisViewProps> = () => {
               Previous
             </button>
             <div className="flex gap-2">
-              {Array.from({ length: maxIndex + 1 }).map((_, index) => (
+              {Array.from({ length: getMaxResultIndex() + 1 }).map((_, index) => (
                 <button
                   key={index}
                   onClick={() => setActiveResultIndex(index)}
