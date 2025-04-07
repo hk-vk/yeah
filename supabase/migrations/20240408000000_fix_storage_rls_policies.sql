@@ -22,15 +22,11 @@ ON storage.objects FOR SELECT
 TO public
 USING (bucket_id = 'analysis-images');
 
--- 2. Authenticated users can upload images
-CREATE POLICY \Authenticated
-users
-can
-upload
-to
-analysis-images\
+-- 2. Any user (public) can upload images
+DROP POLICY IF EXISTS "Authenticated users can upload to analysis-images" ON storage.objects;
+CREATE POLICY "Public can upload to analysis-images"
 ON storage.objects FOR INSERT
-TO authenticated
+TO public
 WITH CHECK (bucket_id = 'analysis-images');
 
 -- 3. Authenticated users can update their own images
@@ -77,23 +73,18 @@ USING (
 );
 
 -- Fix policies for the analysis_images table if needed
-DROP POLICY IF EXISTS \Authenticated
-users
-can
-insert
-analysis_images\ ON public.analysis_images;
+DROP POLICY IF EXISTS "Users can insert analysis_images" ON public.analysis_images;
+DROP POLICY IF EXISTS "Authenticated users can insert analysis_images" ON public.analysis_images;
+DROP POLICY IF EXISTS "Users can insert related analysis_images" ON public.analysis_images; -- Drop the previous stricter policy
 
--- Create more permissive policy for inserting into analysis_images
-CREATE POLICY \Users
-can
-insert
-analysis_images\
+-- Create policy allowing any user (public) to insert related analysis_images
+-- Allow insert only if the related analysis_result exists.
+CREATE POLICY "Public can insert related analysis_images"
 ON public.analysis_images FOR INSERT
-TO authenticated
+TO public
 WITH CHECK (
     EXISTS (
         SELECT 1 FROM public.analysis_result ar
         WHERE ar.id = analysis_id
-        AND (ar.user_id = auth.uid() OR ar.user_id IS NULL)
-    ) OR true -- Fallback to allow insert even if analysis doesn't exist yet
+    )
 );

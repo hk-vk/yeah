@@ -56,6 +56,7 @@ export interface ImageAnalysisResult extends BaseAnalysisResult {
     text?: string;
     images?: { url: string; type: 'uploaded' | 'url' }[];
   };
+  imageUrl?: string;
   error?: string;
 }
 

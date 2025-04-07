@@ -53,49 +53,68 @@ export const SharedAnalysisView: FC<SharedAnalysisViewProps> = () => {
           return;
         }
 
-        // Ensure we have the image URL from either the input images or direct URL
-        if (result.imageAnalysis && result.input) {
-          const imageUrl = result.input.images?.[0]?.url || result.input.image_url;
-          if (imageUrl) {
-            result.imageAnalysis = {
-              ...result.imageAnalysis,
-              imageUrl // Add imageUrl to imageAnalysis
+        // Fix and normalize image analysis data
+        if (result.imageAnalysis) {
+          // Make sure imageAnalysis has the necessary structure
+          const imageUrl = result.input?.images?.[0]?.url || result.input?.image_url;
+          
+          // Ensure the details object exists and has the required fields
+          if (!result.imageAnalysis.details) {
+            result.imageAnalysis.details = {
+              ai_generated: false,
+              deepfake: false,
+              tampering_analysis: false,
+              reverse_search: { found: false },
+              image_caption: ''
             };
-            
-            // Normalize object structure for tampering_analysis and reverse_search
-            if (result.imageAnalysis.details) {
-              const details = result.imageAnalysis.details;
-              
-              // Fix tampering_analysis if it's an object instead of boolean
-              if (typeof details.tampering_analysis === 'object' && 
-                  details.tampering_analysis !== null) {
-                // Use type assertion to handle the dynamic structure
-                const tamperingObj = details.tampering_analysis as { tampered?: boolean };
-                details.tampering_analysis = !!tamperingObj.tampered;
-              }
-              
-              // Fix reverse_search if it has exists instead of found
-              if (details.reverse_search && 
-                  typeof details.reverse_search === 'object' &&
-                  'exists' in details.reverse_search) {
-                // Use type assertion to handle the dynamic structure
-                const reverseSearchObj = details.reverse_search as { exists?: boolean, found?: boolean };
-                reverseSearchObj.found = !!reverseSearchObj.exists;
-              }
-              
-              console.log("Normalized image analysis details:", details);
-            }
           }
+          
+          // Normalize tampering_analysis if it's an object instead of boolean
+          if (typeof result.imageAnalysis.details.tampering_analysis === 'object' && 
+              result.imageAnalysis.details.tampering_analysis !== null) {
+            const tamperingObj = result.imageAnalysis.details.tampering_analysis as { tampered?: boolean };
+            result.imageAnalysis.details.tampering_analysis = !!tamperingObj.tampered;
+          }
+          
+          // Fix reverse_search if it has exists instead of found
+          if (result.imageAnalysis.details.reverse_search && 
+              typeof result.imageAnalysis.details.reverse_search === 'object') {
+            const reverseSearchObj = result.imageAnalysis.details.reverse_search as any;
+            if ('exists' in reverseSearchObj && !('found' in reverseSearchObj)) {
+              reverseSearchObj.found = !!reverseSearchObj.exists;
+            }
+            if (!('found' in reverseSearchObj)) {
+              reverseSearchObj.found = false;
+            }
+          } else if (!result.imageAnalysis.details.reverse_search) {
+            result.imageAnalysis.details.reverse_search = { found: false };
+          }
+          
+          // Ensure we have required score and verdict fields
+          if (typeof result.imageAnalysis.score !== 'number') {
+            result.imageAnalysis.score = 0;
+          }
+          
+          if (!result.imageAnalysis.verdict) {
+            result.imageAnalysis.verdict = 'Unknown';
+          }
+          
+          console.log("Normalized image analysis details:", result.imageAnalysis.details);
         }
 
         setAnalysis(result as AnalysisState);
+        
         // Set initial active index based on available results
-        if (result.imageAnalysis) {
-          setActiveResultIndex(2); // Prioritize showing image analysis first if available
-        } else if (result.textAnalysis) {
-          setActiveResultIndex(0);
-        } else if (result.urlAnalysis) {
-          setActiveResultIndex(1);
+        const availableResults = [];
+        if (result.textAnalysis) availableResults.push('text');
+        if (result.imageAnalysis) availableResults.push('image');
+        if (result.urlAnalysis) availableResults.push('url');
+        
+        // Default to text analysis if available, otherwise show the first available result
+        if (result.textAnalysis) {
+          setActiveResultIndex(availableResults.indexOf('text'));
+        } else if (availableResults.length > 0) {
+          setActiveResultIndex(0); // Show the first available result
         }
       } catch (err) {
         console.error("SharedAnalysisView: Error fetching analysis:", err);
@@ -111,14 +130,15 @@ export const SharedAnalysisView: FC<SharedAnalysisViewProps> = () => {
   const getMaxResultIndex = () => {
     let availableResults = [];
     
+    // Add each available result type in the same order as getCurrentResultType
     if (analysis?.textAnalysis) {
       availableResults.push('text');
     }
-    if (analysis?.urlAnalysis) {
-      availableResults.push('url');
-    }
     if (analysis?.imageAnalysis) {
       availableResults.push('image');
+    }
+    if (analysis?.urlAnalysis) {
+      availableResults.push('url');
     }
     
     return Math.max(0, availableResults.length - 1);
@@ -127,17 +147,19 @@ export const SharedAnalysisView: FC<SharedAnalysisViewProps> = () => {
   const getCurrentResultType = (index: number) => {
     const availableResults = [];
     
+    // Add results in the order we want them to appear
     if (analysis?.textAnalysis) {
       availableResults.push('text');
-    }
-    if (analysis?.urlAnalysis) {
-      availableResults.push('url');
     }
     if (analysis?.imageAnalysis) {
       availableResults.push('image');
     }
+    if (analysis?.urlAnalysis) {
+      availableResults.push('url');
+    }
     
-    return availableResults[index] || 'text';
+    // Return the type at the current index or default to the first available
+    return availableResults[index] || availableResults[0] || 'text';
   };
 
   // Navigation functions
@@ -303,8 +325,8 @@ export const SharedAnalysisView: FC<SharedAnalysisViewProps> = () => {
             >
               <ImageResultCard
                 result={analysis.imageAnalysis}
-                imageUrl={analysis.imageAnalysis.imageUrl}
-                extractedText={analysis.input?.text}
+                imageUrl={analysis.input?.images?.[0]?.url || analysis.input?.image_url || ''}
+                extractedText={analysis.input?.text || ''}
               />
             </motion.div>
           )}

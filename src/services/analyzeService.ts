@@ -586,16 +586,42 @@ export const analyzeService = {
 
             // Fetch associated images
             const images = await imageService.getAnalysisImages(analysisId);
+            console.log('Fetched images for analysis:', images);
+            
+            // Get image URLs
+            const imageUrls = await Promise.all(
+                images.map(async img => {
+                    if (img.storage_path) {
+                        try {
+                            const url = await imageService.getImageUrl(img.storage_path);
+                            return {
+                                url,
+                                type: img.image_type
+                            };
+                        } catch (err) {
+                            console.error('Error getting storage URL:', err);
+                            return null;
+                        }
+                    } else if (img.original_url) {
+                        return {
+                            url: img.original_url,
+                            type: img.image_type
+                        };
+                    }
+                    return null;
+                })
+            );
+            
+            // Filter out any null values and format the input
+            const validImageUrls = imageUrls.filter(Boolean);
+            console.log('Valid image URLs:', validImageUrls);
             
             // Format the result
             const analysisResult = data.result;
             const analysisType = data.type as AnalysisType;
             const analysisInput = {
                 ...data.input,
-                images: images.map(img => ({
-                    url: img.original_url || imageService.getImageUrl(img.storage_path),
-                    type: img.image_type
-                }))
+                images: validImageUrls
             };
 
             let formattedResult = {
@@ -613,13 +639,26 @@ export const analyzeService = {
                 };
                 formattedResult.urlAnalysis = analysisResult.urlAnalysis || null;
             } else if (analysisType === 'image' || analysisType === 'text_image') {
+                // For image analysis, ensure we have the image URL in both places
+                const imageUrl = validImageUrls[0]?.url || data.input?.image_url;
                 formattedResult.imageAnalysis = {
                     ...analysisResult,
                     id: analysisId,
-                    type: analysisType
+                    type: analysisType,
+                    imageUrl // Add the image URL directly to the analysis result
                 };
+                
+                // If this is a text_image analysis, also set the text analysis
+                if (analysisType === 'text_image' && analysisResult.textAnalysis) {
+                    formattedResult.textAnalysis = {
+                        ...analysisResult.textAnalysis,
+                        id: analysisId,
+                        type: 'text'
+                    };
+                }
             }
 
+            console.log('Formatted shared analysis result:', formattedResult);
             return formattedResult;
         } catch (error) {
             console.error('Error in getSharedAnalysis:', error);
