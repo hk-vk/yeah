@@ -52,11 +52,11 @@ export function InputSection({ onAnalyze, isAnalyzing = false }: Props) {
     }
 
     // Different validation for URLs vs. regular text
-    if (text.trim() && !isUrl && text.trim().length < 20) {
+    if (text.trim() && !isUrl && text.trim().length < 10) {
       toast.error(
         language === 'ml' 
-          ? 'കുറഞ്ഞത് 20 അക്ഷരങ്ങളെങ്കിലും നൽകുക' 
-          : 'Please enter at least 20 characters'
+          ? 'കുറഞ്ഞത് 10 അക്ഷരങ്ങളെങ്കിലും നൽകുക' 
+          : 'Please enter at least 10 characters'
       );
       return;
     }
@@ -128,8 +128,8 @@ export function InputSection({ onAnalyze, isAnalyzing = false }: Props) {
 
   // Handle keyboard shortcuts
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    // Submit on Ctrl+Enter
-    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !isAnalyzing) {
+    // Submit on Enter
+    if (e.key === 'Enter' && !e.shiftKey && !isAnalyzing) {
       e.preventDefault();
       handleSubmit(e);
     }
@@ -174,16 +174,16 @@ export function InputSection({ onAnalyze, isAnalyzing = false }: Props) {
               {/* Keyboard Shortcut Hint */}
               <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center">
                 <KeyRound className="w-3 h-3 mr-1" />
-                <span>Ctrl + Enter</span>
+                <span>Enter</span>
               </div>
               
               {/* Character Count */}
               {text && !isUrl && (
                 <div className={clsx(
                   "text-xs",
-                  text.length < 20 ? "text-amber-500 dark:text-amber-400" : "text-gray-500 dark:text-gray-400"
+                  text.length < 10 ? "text-amber-500 dark:text-amber-400" : "text-gray-500 dark:text-gray-400"
                 )}>
-                  {text.length} {text.length < 20 && <span>/ 20</span>}
+                  {text.length} {text.length < 10 && <span>/ 10</span>}
                 </div>
               )}
             </div>
