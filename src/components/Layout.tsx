@@ -86,9 +86,13 @@ export default function Layout({ children }: Props) {
             >
               <div className="flex items-center">
                 <Link to="/" className="flex items-center group hover:scale-105 transition-transform duration-200">
-                  <Newspaper className="h-8 w-8 text-blue-600 group-hover:text-blue-700 transition-colors duration-200" />
+                  <img
+                  src="/logo.png"
+                  alt="Logo"
+                  className="h-10 w-10"
+                  />
                   <span className="ml-2 text-xl font-bold text-gray-800 dark:text-white">
-                    {t.title}
+                  {t.title}
                   </span>
                 </Link>
               </div>

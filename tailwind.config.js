@@ -15,6 +15,8 @@ export default {
         'float': 'float 20s linear infinite',
         'pulse-glow': 'pulse-glow 2s ease-in-out infinite alternate',
         'rotate-gradient': 'rotate-gradient 3s linear infinite',
+        'star-movement-bottom': 'star-movement-bottom linear infinite alternate',
+        'star-movement-top': 'star-movement-top linear infinite alternate',
       },
       keyframes: {
         gradient: {
@@ -65,7 +67,15 @@ export default {
           '100%': {
             'background-position': '0% 50%',
           }
-        }
+        },
+        'star-movement-bottom': {
+          '0%': { transform: 'translate(0%, 0%)', opacity: '1' },
+          '100%': { transform: 'translate(-100%, 0%)', opacity: '0' },
+        },
+        'star-movement-top': {
+          '0%': { transform: 'translate(0%, 0%)', opacity: '1' },
+          '100%': { transform: 'translate(100%, 0%)', opacity: '0' },
+        },
       }
     },
   },
