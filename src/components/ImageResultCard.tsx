@@ -598,15 +598,17 @@ export const ImageResultCard: FC<ImageResultCardProps> = ({ result, imageUrl, ex
             <div className="mb-6">
               {!imageError ? (
                 <div className="flex justify-center">
-                  <img
-                    src={imageUrl}
-                    alt="Analyzed image"
-                    className="rounded-lg shadow-lg object-contain w-full h-auto max-h-[70vh]"
-                    onError={handleImageError}
-                  />
+                  <div className="max-w-md mx-auto">
+                    <img
+                      src={imageUrl}
+                      alt="Analyzed image"
+                      className="rounded-lg shadow-lg object-contain w-full h-auto max-h-[35vh]"
+                      onError={handleImageError}
+                    />
+                  </div>
                 </div>
               ) : (
-                <div className="w-full aspect-video bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center">
+                <div className="w-full aspect-video bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center max-w-md mx-auto">
                   <div className="text-center">
                     <ImageIcon className="w-12 h-12 mx-auto mb-2 text-gray-400" />
                     <p className="text-gray-500">

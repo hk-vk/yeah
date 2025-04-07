@@ -156,6 +156,7 @@ export const analyzeService = {
             
             let imageBlob: Blob | undefined;
             let formData = new FormData();
+            let originalImageUrl = imageUrl; // Store the original URL
             
             if (imageUrl.startsWith('data:')) {
                 imageBlob = dataURLtoBlob(imageUrl);
@@ -182,14 +183,14 @@ export const analyzeService = {
             const result = await response.json();
             console.log('Image analysis result:', result);
 
-            // --- Revert to Synchronous Saving --- 
+            // --- Save Analysis with Proper Image URL --- 
             try {
                 console.log('Attempting to save analysis to Supabase...');
                 const savedAnalysis = await saveAnalysisToSupabase(
                     text ? 'text_image' : 'image',
                     {
-                        // Save simplified input as per previous version
-                        image_url: 'image_processed', 
+                        // Save the ACTUAL image URL, not a placeholder
+                        image_url: originalImageUrl, 
                         text: text,
                     },
                     result, 
@@ -197,38 +198,42 @@ export const analyzeService = {
                 );
                 console.log('Successfully saved analysis to Supabase. ID:', savedAnalysis.id);
 
-                // Store the image in Supabase (still potentially async, but after main save)
+                // Store the image in Supabase and get the storage URL
+                let supabaseImageUrl = originalImageUrl; // Default to original URL
+                
                 try {
                    console.log('Attempting to store image...');
+                   let storedImage;
+                   
                    if (imageBlob) {
-                       // --- Temporarily Commented Out Image Saving ---
-                       await imageService.uploadImage(
+                       storedImage = await imageService.uploadImage(
                            imageBlob,
                            savedAnalysis.id,
                            'uploaded'
                        );
-                       // --- End of Temporarily Commented Out Code ---
+                       // Get the public URL for the stored image
+                       if (storedImage.storage_path) {
+                           supabaseImageUrl = await imageService.getImageUrl(storedImage.storage_path);
+                       }
                    } else if (imageUrl.startsWith('http')) {
-                       // --- Temporarily Commented Out Image Saving ---
-                       await imageService.storeImageUrl(
+                       storedImage = await imageService.storeImageUrl(
                            imageUrl,
                            savedAnalysis.id,
                            'url'
                        );
-                       // --- End of Temporarily Commented Out Code ---
                    }
-                   console.log('Successfully stored image.');
+                   console.log('Successfully stored image with URL:', supabaseImageUrl);
                 } catch (imageStorageError) {
                    console.error('Error storing image:', imageStorageError);
                    // Proceed even if image storage fails
                 }
                 
-                // Return result combined with Supabase ID, NO input field
+                // Return result combined with Supabase ID and the actual image URL
                 return {
                     ...result,
                     id: savedAnalysis.id,
-                    type: text ? 'text_image' : 'image'
-                    // input field removed
+                    type: text ? 'text_image' : 'image',
+                    imageUrl: supabaseImageUrl // Include the actual Supabase image URL
                 };
 
             } catch (saveError) {
@@ -237,11 +242,10 @@ export const analyzeService = {
                 return {
                     ...result,
                     id: `local-${Date.now()}`,
-                    type: text ? 'text_image' : 'image'
-                    // input field removed
+                    type: text ? 'text_image' : 'image',
+                    imageUrl: originalImageUrl // Use original URL as fallback
                 };
             }
-            // --- End of Reverted Logic ---
 
         } catch (error) {
             console.error('Error during image analysis fetch:', error);
