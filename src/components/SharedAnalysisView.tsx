@@ -53,14 +53,49 @@ export const SharedAnalysisView: FC<SharedAnalysisViewProps> = () => {
           return;
         }
 
+        // Ensure we have the image URL from either the input images or direct URL
+        if (result.imageAnalysis && result.input) {
+          const imageUrl = result.input.images?.[0]?.url || result.input.image_url;
+          if (imageUrl) {
+            result.imageAnalysis = {
+              ...result.imageAnalysis,
+              imageUrl // Add imageUrl to imageAnalysis
+            };
+            
+            // Normalize object structure for tampering_analysis and reverse_search
+            if (result.imageAnalysis.details) {
+              const details = result.imageAnalysis.details;
+              
+              // Fix tampering_analysis if it's an object instead of boolean
+              if (typeof details.tampering_analysis === 'object' && 
+                  details.tampering_analysis !== null) {
+                // Use type assertion to handle the dynamic structure
+                const tamperingObj = details.tampering_analysis as { tampered?: boolean };
+                details.tampering_analysis = !!tamperingObj.tampered;
+              }
+              
+              // Fix reverse_search if it has exists instead of found
+              if (details.reverse_search && 
+                  typeof details.reverse_search === 'object' &&
+                  'exists' in details.reverse_search) {
+                // Use type assertion to handle the dynamic structure
+                const reverseSearchObj = details.reverse_search as { exists?: boolean, found?: boolean };
+                reverseSearchObj.found = !!reverseSearchObj.exists;
+              }
+              
+              console.log("Normalized image analysis details:", details);
+            }
+          }
+        }
+
         setAnalysis(result as AnalysisState);
         // Set initial active index based on available results
-        if (result.textAnalysis) {
+        if (result.imageAnalysis) {
+          setActiveResultIndex(2); // Prioritize showing image analysis first if available
+        } else if (result.textAnalysis) {
           setActiveResultIndex(0);
         } else if (result.urlAnalysis) {
           setActiveResultIndex(1);
-        } else if (result.imageAnalysis) {
-          setActiveResultIndex(2);
         }
       } catch (err) {
         console.error("SharedAnalysisView: Error fetching analysis:", err);
@@ -121,6 +156,7 @@ export const SharedAnalysisView: FC<SharedAnalysisViewProps> = () => {
     const inputType = analysis.imageAnalysis ? 'image' : (analysis.urlAnalysis || analysis.textAnalysis?.type === 'url') ? 'url' : 'text';
     const inputValue = analysis.input.text || analysis.input.url;
     const images = analysis.input.images || [];
+    const imageUrl = analysis.input.image_url; // Get direct image URL if available
 
     let IconComponent = Type;
     let label = "Original Text";
@@ -131,6 +167,9 @@ export const SharedAnalysisView: FC<SharedAnalysisViewProps> = () => {
         IconComponent = LinkIcon;
         label = "Original URL";
     }
+
+    // Get the most relevant image URL
+    const displayImageUrl = images[0]?.url || imageUrl || null;
 
     return (
         <div className="mb-6 p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800">
@@ -143,20 +182,15 @@ export const SharedAnalysisView: FC<SharedAnalysisViewProps> = () => {
                   {inputValue}
               </p>
             )}
-            {images.length > 0 && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
-                {images.map((img, index) => (
-                  <div key={index} className="relative aspect-video">
-                    <img
-                      src={img.url}
-                      alt={`Analysis ${img.type} image ${index + 1}`}
-                      className="rounded-lg object-cover w-full h-full"
-                    />
-                    <span className="absolute bottom-2 right-2 bg-black/50 text-white px-2 py-1 text-xs rounded">
-                      {img.type}
-                    </span>
-                  </div>
-                ))}
+            {displayImageUrl && (
+              <div className="mt-2 flex justify-center">
+                <div className="relative max-w-2xl w-full">
+                  <img
+                    src={displayImageUrl}
+                    alt="Analysis image"
+                    className="rounded-lg object-contain w-full h-auto max-h-[60vh]"
+                  />
+                </div>
               </div>
             )}
         </div>
@@ -269,7 +303,7 @@ export const SharedAnalysisView: FC<SharedAnalysisViewProps> = () => {
             >
               <ImageResultCard
                 result={analysis.imageAnalysis}
-                imageUrl={analysis.input?.images?.[0]?.url ?? null}
+                imageUrl={analysis.imageAnalysis.imageUrl}
                 extractedText={analysis.input?.text}
               />
             </motion.div>

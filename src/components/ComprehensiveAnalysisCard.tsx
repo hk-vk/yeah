@@ -8,7 +8,7 @@ import { GlassCard } from './common/GlassCard';
 import clsx from 'clsx';
 import React from 'react';
 import { toast } from 'react-hot-toast';
-import { analyzeService } from '../services/analyzeService';
+import { imageService } from '../services/imageService';
 
 interface ComprehensiveAnalysisCardProps {
   textAnalysis?: TextAnalysisResult | null;
@@ -163,24 +163,57 @@ export const ComprehensiveAnalysisCard: FC<ComprehensiveAnalysisCardProps> = ({
       // Prioritize ID from the primary analysis type
       if (textAnalysis?.id) return textAnalysis.id;
       if (imageAnalysis?.id) return imageAnalysis.id;
-      // Check if urlAnalysis itself has an ID or if it's nested within textAnalysis
-      if (urlAnalysis?.id) return urlAnalysis.id; // Assuming urlAnalysis might have a top-level ID
+      // urlAnalysis does not have its own ID in the current structure
       return null;
   };
 
   const handleShare = async () => {
-    const analysisId = getAnalysisId(); // Get the Supabase ID
+    const analysisId = getAnalysisId();
 
-    if (!analysisId) {
+    if (!analysisId || analysisId.startsWith('local-')) { // Also check for local IDs
       toast.error(
-        language === 'ml' ? 'പങ്കിടാൻ വിശകലന ഐഡി കണ്ടെത്താനായില്ല' : 'Could not find Analysis ID to share'
+        language === 'ml' ? 'പങ്കിടാൻ സാധുവായ വിശകലന ഐഡി കണ്ടെത്താനായില്ല' : 'Could not find valid Analysis ID to share'
       );
-      console.error("Error sharing: Analysis ID is missing from props", { textAnalysis, imageAnalysis, urlAnalysis });
+      console.error("Error sharing: Analysis ID is missing or local", { analysisId, textAnalysis, imageAnalysis, urlAnalysis });
       return;
     }
 
-    // *** Construct URL using the analysis ID ONLY ***
-    const shareableUrl = `${window.location.origin}/analysis/${analysisId}`; // Correct format
+    let shareableUrl = `${window.location.origin}/analysis/${analysisId}`; // Base URL with ID
+    let supabaseImageUrl: string | null = null;
+
+    // Check if an image analysis is present (either directly or nested in textAnalysis for URL results)
+    const currentImageAnalysis = imageAnalysis || textAnalysis?.imageAnalysis;
+
+    if (currentImageAnalysis) {
+        try {
+            console.log(`Fetching image details for analysis ID: ${analysisId}`);
+            const storedImages = await imageService.getAnalysisImages(analysisId);
+            
+            if (storedImages && storedImages.length > 0) {
+                // Assuming the first image is the relevant one for sharing
+                const imageToShare = storedImages[0]; 
+                if (imageToShare.storage_path) {
+                    supabaseImageUrl = await imageService.getImageUrl(imageToShare.storage_path);
+                    console.log(`Got Supabase image URL: ${supabaseImageUrl}`);
+                } else if (imageToShare.original_url) {
+                    // If it was a URL-based image originally, use that
+                    supabaseImageUrl = imageToShare.original_url;
+                     console.log(`Using original image URL: ${supabaseImageUrl}`);
+                }
+
+                if (supabaseImageUrl) {
+                    // Add the image URL as a query parameter
+                    shareableUrl += `?imageUrl=${encodeURIComponent(supabaseImageUrl)}`;
+                }
+            } else {
+                console.log(`No stored image found for analysis ID: ${analysisId}`);
+            }
+        } catch (error) {
+            console.error(`Error fetching image URL for sharing analysis ${analysisId}:`, error);
+            // Proceed without image URL if fetching fails
+        }
+    }
+
     const shareTitle = language === 'ml' ? 'വിശകലന ഫലം' : 'Analysis Result';
     const shareText = language === 'ml' ? 'ഈ വിശകലന ഫലം പരിശോധിക്കുക' : 'Check out this analysis result';
 
@@ -191,21 +224,16 @@ export const ComprehensiveAnalysisCard: FC<ComprehensiveAnalysisCardProps> = ({
         await navigator.share({
           title: shareTitle,
           text: shareText,
-          url: shareableUrl // Use the ID-based URL
+          url: shareableUrl // Use the potentially updated URL
         });
         console.log('Shared successfully via Web Share API');
       } else {
-        // Fallback: Copy the ID-based URL
+        // Fallback: Copy the potentially updated URL
         await navigator.clipboard.writeText(shareableUrl);
         toast.success(
           language === 'ml' ? 'ലിങ്ക് പകർത്തി' : 'Link copied to clipboard',
           {
-            icon: '🔗',
-            style: {
-              borderRadius: '10px',
-              background: '#333',
-              color: '#fff',
-            },
+            /* Toast styles */
           }
         );
         console.log('Share link copied to clipboard:', shareableUrl);
@@ -216,12 +244,7 @@ export const ComprehensiveAnalysisCard: FC<ComprehensiveAnalysisCardProps> = ({
         toast.error(
           language === 'ml' ? 'പങ്കിടൽ പരാജയപ്പെട്ടു' : 'Failed to share analysis',
           {
-            icon: '❌',
-            style: {
-              borderRadius: '10px',
-              background: '#333',
-              color: '#fff',
-            },
+            /* Toast styles */
           }
         );
       } else {

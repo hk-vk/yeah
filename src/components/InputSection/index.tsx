@@ -13,6 +13,16 @@ interface Props {
   isAnalyzing?: boolean;
 }
 
+// Helper function to safely access translations with fallbacks
+const getTranslation = (lang: 'en' | 'ml', key: string, fallback: string) => {
+  // Ensure translations[lang] exists before accessing
+  const langTranslations = translations[lang];
+  if (langTranslations && typeof langTranslations === 'object' && key in langTranslations) {
+    return langTranslations[key as keyof typeof langTranslations];
+  }
+  return fallback;
+};
+
 export function InputSection({ onAnalyze, isAnalyzing = false }: Props) {
   const [text, setText] = useState('');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -37,6 +47,48 @@ export function InputSection({ onAnalyze, isAnalyzing = false }: Props) {
   useEffect(() => {
     setIsUrl(isValidUrl(text.trim()));
   }, [text]);
+
+  // Load shared text and image from URL if present
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const sharedText = params.get('text');
+    const sharedImageUrl = params.get('imageUrl'); // Get image URL param
+
+    let shouldAnalyze = false;
+    let analysisInput: { type: 'text' | 'url' | 'image'; content: string; imageContent?: string } | null = null;
+
+    if (sharedImageUrl && !selectedImage) { // Check if image isn't already set
+        setSelectedImage(sharedImageUrl);
+        setIsUrl(false); // Ensure URL mode is off if image is loaded
+        if (sharedText) {
+            setText(sharedText);
+            analysisInput = { type: 'image', content: sharedText, imageContent: sharedImageUrl };
+        } else {
+            analysisInput = { type: 'image', content: '', imageContent: sharedImageUrl };
+        }
+        shouldAnalyze = true; // Analyze if image is present
+
+    } else if (sharedText && !text) { // Only load text if no image was loaded and text isn't set
+      const decodedText = decodeURIComponent(sharedText);
+      setText(decodedText);
+      // Check length requirement before auto-analyzing
+       if (decodedText.length >= 10) {
+          analysisInput = {
+            type: 'text', // Assume shared links without imageUrl are text
+            content: decodedText
+          };
+          shouldAnalyze = true;
+       } else {
+           toast(getTranslation(language, 'sharedTextTooShort', 'Shared text loaded, but it is too short to analyze automatically.'));
+       }
+    }
+
+    // Trigger analysis if conditions met
+    if (shouldAnalyze && analysisInput) {
+        onAnalyze(analysisInput);
+    }
+
+  }, []); // Run only once on mount
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

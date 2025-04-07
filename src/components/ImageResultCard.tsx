@@ -1,14 +1,16 @@
-import { FC, useState } from 'react';
+import { FC, useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Check, X, Globe, ChevronLeft, Calendar, ShieldCheck, ShieldAlert,
-  Image as ImageIcon, ChevronUp, ChevronDown, AlertTriangle, Cpu,
+  Image as ImageIcon, ChevronUp, ChevronDown, AlertTriangle, Cpu, Copy, Share2,
   Camera, Scissors, Search, FileText
 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { GlassCard } from './common/GlassCard';
 import clsx from 'clsx';
 import { ImageAnalysisSliders } from './ImageAnalysisSliders';
+import { imageService } from '../services/imageService';
+import toast from 'react-hot-toast';
 
 interface ImageAnalysisDetails {
   ai_generated: boolean;
@@ -47,14 +49,16 @@ interface ImageAnalysisDetails {
 }
 
 interface ImageAnalysisResult {
+  id?: string;
   verdict: string;
   score: number;
   details: ImageAnalysisDetails;
+  type?: 'image' | 'text_image';
 }
 
 interface ImageResultCardProps {
   result: ImageAnalysisResult;
-  imageUrl: string | null;
+  imageUrl: string | null | undefined;
   extractedText?: string;
 }
 
@@ -63,8 +67,113 @@ export const ImageResultCard: FC<ImageResultCardProps> = ({ result, imageUrl, ex
   const isMalayalam = language === 'ml';
   const [expandedMatches, setExpandedMatches] = useState(false);
   const [expandedTextMatches, setExpandedTextMatches] = useState(false);
+  const [imageError, setImageError] = useState(false);
   
-  // Modify the validation to be more lenient to allow more result types to render
+  console.log('ImageResultCard rendered with props:', { resultId: result?.id, imageUrl, extractedText: !!extractedText });
+
+  useEffect(() => {
+    setImageError(false);
+  }, [imageUrl]);
+
+  const handleImageError = () => {
+    console.error('Failed to load image:', imageUrl);
+    setImageError(true);
+  };
+
+  const handleShare = async () => {
+    const analysisId = result.id;
+
+    if (!analysisId || analysisId.startsWith('local-')) {
+      toast.error(
+        language === 'ml' ? 'പങ്കിടാൻ സാധുവായ വിശകലന ഐഡി കണ്ടെത്താനായില്ല' : 'Could not find valid Analysis ID to share'
+      );
+      console.error("Error sharing: Analysis ID is missing or local", { analysisId, result });
+      return;
+    }
+
+    let shareableUrl = `${window.location.origin}/analysis/${analysisId}`;
+    let supabaseImageUrl: string | null = null;
+
+    try {
+        console.log(`Fetching image details for analysis ID: ${analysisId}`);
+        const storedImages = await imageService.getAnalysisImages(analysisId);
+
+        if (storedImages && storedImages.length > 0) {
+            const imageToShare = storedImages[0];
+            if (imageToShare.storage_path) {
+                supabaseImageUrl = await imageService.getImageUrl(imageToShare.storage_path);
+                console.log(`Got Supabase image URL: ${supabaseImageUrl}`);
+            } else if (imageToShare.original_url) {
+                supabaseImageUrl = imageToShare.original_url;
+                console.log(`Using original image URL: ${supabaseImageUrl}`);
+            }
+
+            if (supabaseImageUrl) {
+                shareableUrl += `?imageUrl=${encodeURIComponent(supabaseImageUrl)}`;
+            }
+        } else {
+            console.log(`No stored image found for analysis ID: ${analysisId}`);
+        }
+    } catch (error) {
+        console.error(`Error fetching image URL for sharing analysis ${analysisId}:`, error);
+    }
+
+    const shareTitle = language === 'ml' ? 'ചിത്ര വിശകലന ഫലം' : 'Image Analysis Result';
+    const shareText = language === 'ml' ? 'ഈ ചിത്ര വിശകലന ഫലം പരിശോധിക്കുക' : 'Check out this image analysis result';
+
+    console.log("Attempting to share URL:", shareableUrl);
+
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: shareTitle,
+          text: shareText,
+          url: shareableUrl
+        });
+      } else {
+        await navigator.clipboard.writeText(shareableUrl);
+        toast.success(language === 'ml' ? 'ലിങ്ക് പകർത്തി' : 'Link copied to clipboard');
+      }
+    } catch (err) {
+      if (err instanceof Error && err.name !== 'AbortError') {
+        console.error('Error sharing analysis:', err);
+        toast.error(language === 'ml' ? 'പങ്കിടൽ പരാജയപ്പെട്ടു' : 'Failed to share analysis');
+      }
+    }
+  };
+
+  const handleCopy = async () => {
+     try {
+        const verdictText = getVerdict();
+        const scoreText = `${confidencePercentage}% ${language === 'ml' ? 'വിശ്വസനീയത' : 'Reliability'}`;
+        const caption = image_caption || (language === 'ml' ? 'വിവരണം ലഭ്യമല്ല' : 'No description');
+        const detailsSummary = [
+            ai_generated ? (language === 'ml' ? 'AI നിർമ്മിതം' : 'AI Generated') : null,
+            deepfake ? (language === 'ml' ? 'ഡീപ്‌ഫേക്ക്' : 'Deepfake') : null,
+            tampering_analysis ? (language === 'ml' ? 'കൃത്രിമ മാറ്റം' : 'Tampered') : null,
+            reverse_search.found ? (language === 'ml' ? 'ഓൺലൈനിൽ കണ്ടെത്തി' : 'Found Online') : null
+        ].filter(Boolean).join(', ');
+
+        const textToCopy = `${language === 'ml' ? 'ചിത്ര വിശകലനം' : 'Image Analysis'}: ${verdictText} (${scoreText})\n${language === 'ml' ? 'വിവരണം' : 'Description'}: ${caption}\n${language === 'ml' ? ' കണ്ടെത്തലുകൾ' : 'Findings'}: ${detailsSummary}`;
+
+        await navigator.clipboard.writeText(textToCopy);
+        toast.success(language === 'ml' ? 'വിശകലനം പകർത്തി' : 'Analysis copied');
+     } catch (error) {
+        console.error('Error copying image analysis:', error);
+        toast.error(language === 'ml' ? 'പകർത്താൻ കഴിഞ്ഞില്ല' : 'Failed to copy');
+     }
+  };
+
+  console.log('ImageResultCard checking imageUrl value:', imageUrl);
+  if (!imageUrl) {
+    console.error('Image URL is missing when rendering ImageResultCard for analysis:', result?.id);
+    return (
+      <div className="text-yellow-500 text-center p-4 bg-white dark:bg-gray-800 rounded-lg shadow-md">
+        {language === 'ml' ? 'ചിത്രം ലഭ്യമല്ല' : 'Image not available'}
+      </div>
+    );
+  }
+
   if (!result) {
     return (
       <div className="text-red-500 text-center p-4 bg-white dark:bg-gray-800 rounded-lg shadow-md">
@@ -73,7 +182,6 @@ export const ImageResultCard: FC<ImageResultCardProps> = ({ result, imageUrl, ex
     );
   }
 
-  // Basic checks to ensure we have the minimum required fields
   if (!result.details) {
     console.error('Image analysis result is missing details:', result);
     return (
@@ -83,7 +191,6 @@ export const ImageResultCard: FC<ImageResultCardProps> = ({ result, imageUrl, ex
     );
   }
 
-  // Extract details with fallback values to prevent errors
   const {
     ai_generated = false,
     reverse_search = { found: false, matches: [] },
@@ -94,7 +201,6 @@ export const ImageResultCard: FC<ImageResultCardProps> = ({ result, imageUrl, ex
     date_analysis
   } = result.details;
 
-  // Normalize the score to be between 0-100
   const confidencePercentage = Math.min(100, Math.max(0, Math.round(result.score)));
   const isReliable = result.verdict.toLowerCase() === 'real' || 
                      result.verdict.toLowerCase() === 'authentic' ||
@@ -120,7 +226,6 @@ export const ImageResultCard: FC<ImageResultCardProps> = ({ result, imageUrl, ex
       );
     }
 
-    // Display a preview or the full list based on expansion state
     const displayedMatches = expandedMatches ? matches : matches.slice(0, 1);
     
     return (
@@ -187,7 +292,6 @@ export const ImageResultCard: FC<ImageResultCardProps> = ({ result, imageUrl, ex
       );
     }
 
-    // Display a preview or the full list based on expansion state
     const displayedMatches = expandedTextMatches ? matches : matches.slice(0, 1);
     
     return (
@@ -237,11 +341,7 @@ export const ImageResultCard: FC<ImageResultCardProps> = ({ result, imageUrl, ex
   };
 
   const renderTextAnalysis = () => {
-    // First check if the result has text analysis
-    const textAnalysis = result.details.text_analysis;
-    
-    // If not, but we have extracted text from client-side OCR, show that
-    if (!textAnalysis && extractedText && extractedText.length > 10) {
+    if (!text_analysis && extractedText && extractedText.length > 10) {
       return (
         <div className="space-y-3">
           <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-md">
@@ -262,12 +362,11 @@ export const ImageResultCard: FC<ImageResultCardProps> = ({ result, imageUrl, ex
       );
     }
     
-    // If we have backend text analysis results, show those
-    if (!textAnalysis) return null;
+    if (!text_analysis) return null;
 
-    const similarity = Math.round(textAnalysis.context_similarity * 100);
-    const hasUserText = !!textAnalysis.user_text;
-    const hasExtractedText = !!textAnalysis.extracted_text;
+    const similarity = Math.round(text_analysis.context_similarity * 100);
+    const hasUserText = !!text_analysis.user_text;
+    const hasExtractedText = !!text_analysis.extracted_text;
 
     return (
       <div className="space-y-3">
@@ -288,14 +387,14 @@ export const ImageResultCard: FC<ImageResultCardProps> = ({ result, imageUrl, ex
             {language === 'ml' ? 'കോൺടെക്സ്റ്റ് സാമ്യത' : 'Context Similarity'}: {similarity}%
           </span>
           <span className={clsx(
-            textAnalysis.context_mismatch ? "text-red-500" : "text-green-500",
+            text_analysis.context_mismatch ? "text-red-500" : "text-green-500",
             "flex items-center",
             isMalayalam ? "text-base" : "text-sm"
           )}>
-            {textAnalysis.context_mismatch 
+            {text_analysis.context_mismatch 
               ? <X className="w-3.5 h-3.5 mr-1" /> 
               : <Check className="w-3.5 h-3.5 mr-1" />}
-            {textAnalysis.context_mismatch 
+            {text_analysis.context_mismatch 
               ? (language === 'ml' ? 'പൊരുത്തക്കേട്' : 'Mismatch') 
               : (language === 'ml' ? 'പൊരുത്തം' : 'Match')}
           </span>
@@ -312,7 +411,7 @@ export const ImageResultCard: FC<ImageResultCardProps> = ({ result, imageUrl, ex
                   "text-gray-600 dark:text-gray-400 mt-1 border-l-2 border-blue-300 pl-3",
                   isMalayalam && "text-base leading-relaxed"
                 )}>
-                  {textAnalysis.user_text}
+                  {text_analysis.user_text}
                 </p>
               </div>
             )}
@@ -325,7 +424,7 @@ export const ImageResultCard: FC<ImageResultCardProps> = ({ result, imageUrl, ex
                   "text-gray-600 dark:text-gray-400 mt-1 border-l-2 border-purple-300 pl-3",
                   isMalayalam && "text-base leading-relaxed"
                 )}>
-                  {textAnalysis.extracted_text}
+                  {text_analysis.extracted_text}
                 </p>
               </div>
             )}
@@ -344,7 +443,7 @@ export const ImageResultCard: FC<ImageResultCardProps> = ({ result, imageUrl, ex
         day: 'numeric'
       }).format(date);
     } catch (e) {
-      return dateStr; // Fallback to original string if parsing fails
+      return dateStr;
     }
   };
 
@@ -457,20 +556,29 @@ export const ImageResultCard: FC<ImageResultCardProps> = ({ result, imageUrl, ex
       animate={{ opacity: 1, scale: 1 }}
       className="w-full max-w-full mx-auto relative"
     >
-      {/* Swipe Indicator */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 1 }}
-        className="absolute -left-4 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-600 hidden md:flex items-center"
-      >
-        <ChevronLeft className="w-4 h-4 mr-2" />
-        <span className="text-sm">
-          {language === 'ml' ? 'വാചക വിശകലനം' : 'Text Analysis'}
-        </span>
-      </motion.div>
-
-      <div className="absolute top-4 right-4 z-10">
+      <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
+        <button
+           onClick={handleCopy}
+           className={clsx(
+               "p-1.5 rounded-full transition-colors",
+               "text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200",
+               "hover:bg-gray-100 dark:hover:bg-gray-800/50"
+           )}
+           title={language === 'ml' ? 'വിശകലനം പകർത്തുക' : 'Copy analysis'}
+           >
+           <Copy className="w-4 h-4" />
+       </button>
+       <button
+           onClick={handleShare}
+           className={clsx(
+               "p-1.5 rounded-full transition-colors",
+               "text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200",
+               "hover:bg-gray-100 dark:hover:bg-gray-800/50"
+           )}
+           title={language === 'ml' ? 'പങ്കിടുക' : 'Share'}
+           >
+           <Share2 className="w-4 h-4" />
+       </button>
         <span className={clsx(
           "px-3 py-1 rounded-full text-sm font-medium",
           "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-200",
@@ -486,20 +594,30 @@ export const ImageResultCard: FC<ImageResultCardProps> = ({ result, imageUrl, ex
           "relative p-6 space-y-6",
           isMalayalam && "malayalam-text"
         )}>
-          {/* Image Preview with elegant frame */}
           {imageUrl && (
-            <div className="mb-4">
-              <div className="flex justify-center p-2 bg-gradient-to-r from-gray-100/80 to-gray-200/80 dark:from-gray-700/30 dark:to-gray-700/50 rounded-lg shadow-md">
-                <img 
-                  src={imageUrl} 
-                  alt="Analyzed" 
-                  className="max-h-64 rounded-md object-contain" 
-                />
-              </div>
+            <div className="mb-6">
+              {!imageError ? (
+                <div className="flex justify-center">
+                  <img
+                    src={imageUrl}
+                    alt="Analyzed image"
+                    className="rounded-lg shadow-lg object-contain w-full h-auto max-h-[70vh]"
+                    onError={handleImageError}
+                  />
+                </div>
+              ) : (
+                <div className="w-full aspect-video bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center">
+                  <div className="text-center">
+                    <ImageIcon className="w-12 h-12 mx-auto mb-2 text-gray-400" />
+                    <p className="text-gray-500">
+                      {language === 'ml' ? 'ചിത്രം ലോഡ് ചെയ്യാൻ കഴിഞ്ഞില്ല' : 'Failed to load image'}
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
-          {/* Main Analysis Result - Matching ResultCard style */}
           <div className="flex items-center justify-center mb-6">
             {isReliable ? (
               <motion.div
@@ -528,7 +646,6 @@ export const ImageResultCard: FC<ImageResultCardProps> = ({ result, imageUrl, ex
             )}
           </div>
 
-          {/* Score Bar */}
           <div className="mb-6">
             <div className="flex justify-between mb-1">
               <span className={clsx("font-medium", isMalayalam ? "text-base" : "text-sm")}>
@@ -555,7 +672,6 @@ export const ImageResultCard: FC<ImageResultCardProps> = ({ result, imageUrl, ex
             </div>
           </div>
 
-          {/* Image Caption */}
           <div className="mb-6">
             <h3 className={clsx(
               "text-lg font-semibold mb-2 text-gray-800 dark:text-gray-100 flex items-center",
@@ -572,7 +688,6 @@ export const ImageResultCard: FC<ImageResultCardProps> = ({ result, imageUrl, ex
             </p>
           </div>
 
-          {/* Date Analysis Section */}
           {date_analysis && (
             <div className="mb-6 bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg backdrop-blur-sm">
               <h3 className={clsx(
@@ -586,9 +701,7 @@ export const ImageResultCard: FC<ImageResultCardProps> = ({ result, imageUrl, ex
             </div>
           )}
 
-          {/* Analysis Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-            {/* AI Generation */}
             <div className={clsx(
               "p-4 rounded-lg",
               ai_generated
@@ -624,7 +737,6 @@ export const ImageResultCard: FC<ImageResultCardProps> = ({ result, imageUrl, ex
               </p>
             </div>
 
-            {/* Deepfake */}
             <div className={clsx(
               "p-4 rounded-lg",
               deepfake
@@ -660,7 +772,6 @@ export const ImageResultCard: FC<ImageResultCardProps> = ({ result, imageUrl, ex
               </p>
             </div>
 
-            {/* Tampering */}
             <div className={clsx(
               "p-4 rounded-lg",
               tampering_analysis
@@ -696,7 +807,6 @@ export const ImageResultCard: FC<ImageResultCardProps> = ({ result, imageUrl, ex
               </p>
             </div>
 
-            {/* Web Matches */}
             <div className={clsx(
               "p-4 rounded-lg",
               reverse_search.found
@@ -711,7 +821,6 @@ export const ImageResultCard: FC<ImageResultCardProps> = ({ result, imageUrl, ex
             </div>
           </div>
 
-          {/* Text Analysis */}
           {(text_analysis || (extractedText && extractedText.length > 10)) && (
             <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
               <h3 className={clsx(
@@ -723,7 +832,6 @@ export const ImageResultCard: FC<ImageResultCardProps> = ({ result, imageUrl, ex
               </h3>
               {renderTextAnalysis()}
               
-              {/* Text Reverse Search Results */}
               {text_analysis?.reverse_search && (
                 <div className="mt-6">
                   <h4 className={clsx(
