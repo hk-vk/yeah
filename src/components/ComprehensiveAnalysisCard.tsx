@@ -126,7 +126,7 @@ export const ComprehensiveAnalysisCard: FC<ComprehensiveAnalysisCardProps> = ({
   // Render analysis status icons
   const renderAnalysisStatus = () => {
     return (
-      <div className="flex items-center gap-3 mb-4">
+      <div className="hidden sm:flex items-center gap-3 mb-4">
         {hasUrlAnalysis && (
           <div className={clsx(
             "flex items-center gap-1 text-sm border px-2 py-1 rounded-md",
@@ -541,4 +541,4 @@ export const ComprehensiveAnalysisCard: FC<ComprehensiveAnalysisCardProps> = ({
       </GlassCard>
     </motion.div>
   );
-}; 
+};
