@@ -321,7 +321,8 @@ export const ComprehensiveAnalysisCard: FC<ComprehensiveAnalysisCardProps> = ({
         <span className={clsx(
           "px-3 py-1 rounded-full text-sm font-medium",
           "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-200",
-          "border border-purple-200 dark:border-purple-800/30"
+          "border border-purple-200 dark:border-purple-800/30",
+          "hidden sm:inline-block"
         )}>
           {language === 'ml' ? 'സമഗ്ര വിശകലനം' : 'Comprehensive Analysis'}
         </span>

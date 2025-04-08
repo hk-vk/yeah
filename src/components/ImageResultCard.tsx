@@ -143,25 +143,24 @@ export const ImageResultCard: FC<ImageResultCardProps> = ({ result, imageUrl, ex
   };
 
   const handleCopy = async () => {
-     try {
-        const verdictText = getVerdict();
-        const scoreText = `${confidencePercentage}% ${language === 'ml' ? 'വിശ്വസനീയത' : 'Reliability'}`;
-        const caption = image_caption || (language === 'ml' ? 'വിവരണം ലഭ്യമല്ല' : 'No description');
-        const detailsSummary = [
-            ai_generated ? (language === 'ml' ? 'AI നിർമ്മിതം' : 'AI Generated') : null,
-            deepfake ? (language === 'ml' ? 'ഡീപ്‌ഫേക്ക്' : 'Deepfake') : null,
-            tampering_analysis ? (language === 'ml' ? 'കൃത്രിമ മാറ്റം' : 'Tampered') : null,
-            reverse_search.found ? (language === 'ml' ? 'ഓൺലൈനിൽ കണ്ടെത്തി' : 'Found Online') : null
-        ].filter(Boolean).join(', ');
+    try {
+      const verdictText = getVerdict();
+      const caption = image_caption || (language === 'ml' ? 'വിവരണം ലഭ്യമല്ല' : 'No description');
+      const detailsSummary = [
+        ai_generated ? (language === 'ml' ? 'AI നിർമ്മിതം' : 'AI Generated') : null,
+        deepfake ? (language === 'ml' ? 'ഡീപ്‌ഫേക്ക്' : 'Deepfake') : null,
+        tampering_analysis ? (language === 'ml' ? 'കൃത്രിമ മാറ്റം' : 'Tampered') : null,
+        reverse_search.found ? (language === 'ml' ? 'ഓൺലൈനിൽ കണ്ടെത്തി' : 'Found Online') : null
+      ].filter(Boolean).join(', ');
 
-        const textToCopy = `${language === 'ml' ? 'ചിത്ര വിശകലനം' : 'Image Analysis'}: ${verdictText} (${scoreText})\n${language === 'ml' ? 'വിവരണം' : 'Description'}: ${caption}\n${language === 'ml' ? ' കണ്ടെത്തലുകൾ' : 'Findings'}: ${detailsSummary}`;
+      const textToCopy = `${language === 'ml' ? 'ചിത്ര വിശകലനം' : 'Image Analysis'}: ${verdictText}\n${language === 'ml' ? 'വിവരണം' : 'Description'}: ${caption}\n${language === 'ml' ? ' കണ്ടെത്തലുകൾ' : 'Findings'}: ${detailsSummary}`;
 
-        await navigator.clipboard.writeText(textToCopy);
-        toast.success(language === 'ml' ? 'വിശകലനം പകർത്തി' : 'Analysis copied');
-     } catch (error) {
-        console.error('Error copying image analysis:', error);
-        toast.error(language === 'ml' ? 'പകർത്താൻ കഴിഞ്ഞില്ല' : 'Failed to copy');
-     }
+      await navigator.clipboard.writeText(textToCopy);
+      toast.success(language === 'ml' ? 'വിശകലനം പകർത്തി' : 'Analysis copied');
+    } catch (error) {
+      console.error('Error copying image analysis:', error);
+      toast.error(language === 'ml' ? 'പകർത്താൻ കഴിഞ്ഞില്ല' : 'Failed to copy');
+    }
   };
 
   console.log('ImageResultCard checking imageUrl value:', imageUrl);
@@ -201,7 +200,6 @@ export const ImageResultCard: FC<ImageResultCardProps> = ({ result, imageUrl, ex
     date_analysis
   } = result.details;
 
-  const confidencePercentage = Math.min(100, Math.max(0, Math.round(result.score)));
   const isReliable = result.verdict.toLowerCase() === 'real' || 
                      result.verdict.toLowerCase() === 'authentic' ||
                      result.verdict.toLowerCase() === 'genuine';
@@ -582,7 +580,8 @@ export const ImageResultCard: FC<ImageResultCardProps> = ({ result, imageUrl, ex
         <span className={clsx(
           "px-3 py-1 rounded-full text-sm font-medium",
           "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-200",
-          "border border-purple-200 dark:border-purple-800/30"
+          "border border-purple-200 dark:border-purple-800/30",
+          "hidden sm:inline-block"
         )}>
           {language === 'ml' ? 'ചിത്ര വിശകലനം' : 'Image Analysis'}
         </span>
@@ -646,32 +645,6 @@ export const ImageResultCard: FC<ImageResultCardProps> = ({ result, imageUrl, ex
                 )}>{getVerdict()}</span>
               </motion.div>
             )}
-          </div>
-
-          <div className="mb-6">
-            <div className="flex justify-between mb-1">
-              <span className={clsx("font-medium", isMalayalam ? "text-base" : "text-sm")}>
-                {language === 'ml' ? 'വിശ്വസനീയതാ സ്കോർ' : 'Reliability Score'}
-              </span>
-              <span className={clsx(
-                "font-medium",
-                isReliable ? "text-green-600" : "text-amber-600",
-                isMalayalam ? "text-base" : "text-sm"
-              )}>
-                {confidencePercentage}%
-              </span>
-            </div>
-            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 overflow-hidden">
-              <div
-                className={clsx(
-                  "h-2.5 rounded-full transition-all duration-500",
-                  isReliable 
-                    ? "bg-green-500" 
-                    : "bg-amber-500"
-                )}
-                style={{ width: `${confidencePercentage}%` }}
-              />
-            </div>
           </div>
 
           <div className="mb-6">
